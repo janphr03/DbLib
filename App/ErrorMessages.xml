@@ -1,0 +1,13 @@
+﻿<?xml version="1.0"?>
+<ErrorMessages>
+	<Language name ="DE">
+		<Text ID ="1">
+			Die Verbindung wurde aufgebaut
+		</Text>
+	</Language>
+	<Language name ="ENG">
+		<Text ID ="1">
+			Connection established
+		</Text>
+	</Language>
+</ErrorMessages>
