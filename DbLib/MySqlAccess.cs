@@ -174,7 +174,7 @@ namespace DbLib
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
         /// </summary>
         /// 
-        /// <param name="column"> Spaltenname </param>
+        /// <param name="column">Die Spalte</param>
         /// <param name="tableName"></param>
         /// <param name="whereCondition"></param>
         /// <param name="orderBy"></param>
@@ -234,8 +234,44 @@ namespace DbLib
             }
             return dt;
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public DataTable executeQuery(string query)
+        {
 
+            DataTable dt = null;  // Erstellen eines leeren DataTable
+            try
+            {
+                dt = new DataTable();
+                // Sicherstellen, dass die Verbindung geöffnet ist
+                if (connection.State == ConnectionState.Closed)
+                {
+                    openConnection();
+                }
 
+               // MySqlCommand erstellen und Abfrage ausführen
+                using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                {
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Lade die Spaltenstruktur des DataReaders in den DataTable
+                        dt.Load(reader);
+                    }
+                }                
+            }
+
+            catch (Exception e)
+            {
+            }
+
+            finally
+            {
+            }
+            return dt;
+        }
 
         /// <summary>
         /// Die Methode bekommt die Information für eine Sql UPDATE-Abfrage in Form mehrerer vordefinierter String Parameter.

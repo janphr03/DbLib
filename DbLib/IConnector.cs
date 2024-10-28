@@ -16,8 +16,19 @@ namespace DbLib
         /// <param name="tableName"></param>
         /// <param name="whereCondition"></param>
         /// <param name="orderBy"></param>
-        /// <returns></returns>
+        /// <returns>
+        /// 
+        /// </returns>
+
         public DataTable select(string column, string tableName, string whereCondition, string orderBy);
+        public DataTable executeQuery(string query);
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="values"></param>
+        /// <returns></returns>
         public int insert(string tableName, string values);
         public int update(string tableName, string set, string whereCondition, string join);
         public int delete(string tableName,  string wherecondition, string limit);
