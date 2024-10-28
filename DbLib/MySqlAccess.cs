@@ -2,12 +2,13 @@
 using System.Data;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Utilities;
 
 namespace DbLib
 {
     public class MySqlAccess : IConnector
     {
-        // wegmachen?!
+
         private string database;
         private string server;
         private string uid;
@@ -48,7 +49,6 @@ namespace DbLib
 
             // Verbindung öffnen 
             flagStatus = openConnection();
-
 
         }
 
@@ -123,7 +123,7 @@ namespace DbLib
         /// 
         /// <returns>
         ///  0 = geschlossen
-        /// -1 = Verbindung ist ungültig oder bereits geschlossen
+        /// -1 = keine Verbindungsinformationen erhalten
         /// -2 = Verbindung schon geschlossen
         /// -3 = anderer Fehler ist aufgetreten
         /// </returns>
@@ -174,7 +174,7 @@ namespace DbLib
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
         /// </summary>
         /// 
-        /// <param name="column"></param>
+        /// <param name="column">Die Spalte</param>
         /// <param name="tableName"></param>
         /// <param name="whereCondition"></param>
         /// <param name="orderBy"></param>
@@ -234,8 +234,44 @@ namespace DbLib
             }
             return dt;
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public DataTable executeQuery(string query)
+        {
 
+            DataTable dt = null;  // Erstellen eines leeren DataTable
+            try
+            {
+                dt = new DataTable();
+                // Sicherstellen, dass die Verbindung geöffnet ist
+                if (connection.State == ConnectionState.Closed)
+                {
+                    openConnection();
+                }
 
+               // MySqlCommand erstellen und Abfrage ausführen
+                using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                {
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Lade die Spaltenstruktur des DataReaders in den DataTable
+                        dt.Load(reader);
+                    }
+                }                
+            }
+
+            catch (Exception e)
+            {
+            }
+
+            finally
+            {
+            }
+            return dt;
+        }
 
         /// <summary>
         /// Die Methode bekommt die Information für eine Sql UPDATE-Abfrage in Form mehrerer vordefinierter String Parameter.
@@ -356,6 +392,7 @@ namespace DbLib
                     openConnection();
                 }
 
+                // nur ausführen wenn Verbindung offen
                 // MySql-Befehl ausführen
                 using (MySqlCommand cmd = new MySqlCommand(queryInsert, connection))
                 {
@@ -386,30 +423,30 @@ namespace DbLib
         /// 
         /// <returns>
         ///  n = Anzahl betroffener Felder
-        /// -1 = tableName leer
+        /// -1 = tableName oder whereCondition leer
         /// -2 = anderer Fehler
         /// </returns>
-        public int delete(string tableName, string whereCondition)
+        public int delete(string tableName, string whereCondition, string limit)
         {
             int returnVal = 0;
             try
             {
                 string queryDelete = "";
-                // Sicherstellen, dass der tableName und values nicht leer sind
-                if (string.IsNullOrEmpty(tableName))
+                // Sicherstellen, dass der tableName und die whereCondition nicht leer sind
+                if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(whereCondition))
                 {
                     returnVal = -1;
                 }
                 // Grundlegende MySql-Abfrage erstellen, sofern table name und values nicht leer sind
                 else
                 {
-                    queryDelete = $"DELETE FROM {tableName}";
+                    queryDelete = $" DELETE FROM {tableName} WHERE {whereCondition}";
                 }
 
                 // WHERE-Bedingung hinzufügen, falls vorhanden
-                if (!string.IsNullOrEmpty(whereCondition))
+                if (!string.IsNullOrEmpty(limit))
                 {
-                    queryDelete += $"WHERE ({whereCondition});";
+                    queryDelete += $" LIMIT {limit};";
                 }
 
                 // Sicherstellen, dass die Verbindung geöffnet ist
