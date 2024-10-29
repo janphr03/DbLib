@@ -6,32 +6,13 @@ namespace DbLib
 {
     public interface IConnector
     {
-        public int openConnection();
-        public int closeConnection();
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="column">Spaltenname</param>
-        /// <param name="tableName"></param>
-        /// <param name="whereCondition"></param>
-        /// <param name="orderBy"></param>
-        /// <returns>
-        /// 
-        /// </returns>
-
-        public DataTable select(string column, string tableName, string whereCondition, string orderBy);
-        public DataTable executeQuery(string query);
-        
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="tableName"></param>
-        /// <param name="values"></param>
-        /// <returns></returns>
-        public int insert(string tableName, string values);
-        public int update(string tableName, string set, string whereCondition, string join);
-        public int delete(string tableName,  string wherecondition, string limit);
+        public errorValues openConnection();
+        public errorValues closeConnection();
+        public errorValues executeQuery(string query
+        public errorValues select(string column, string tableName, string whereCondition, string orderBy);
+        public errorValues insert(string tableName, string values);
+        public errorValues update (string tableName, string set, string whereCondition, string join);
+        public errorValues delete(string tableName,  string wherecondition, string limit);
 
     }
 }

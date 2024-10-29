@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Org.BouncyCastle.Utilities;
@@ -16,7 +17,7 @@ namespace DbLib
 
         private MySql.Data.MySqlClient.MySqlConnection connection;
         
-        public int flagStatus = 0;  // Verbindungsstatus
+        public errorValues flagStatus = 0;  // Verbindungsstatus
 
 
         /// <summary>
@@ -36,7 +37,7 @@ namespace DbLib
             // flagStatus != 0 für ungültige Verbindung
             if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
             {
-                flagStatus = -1;  
+                flagStatus = errorValues.Success;  
                 return;
             }
 
@@ -66,21 +67,21 @@ namespace DbLib
         /// -2 = Server nicht erreichbar
         /// -3 = anderer Fehler
         /// </returns>
-        public int openConnection()
+        public errorValues openConnection()
         {
-            int returnVal = 0;
+            errorValues returnVal = 0;
             try
             {
                 // Prüft im Vorfeld, ob die Verbindung bereits besteht
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
-                    returnVal = 0;
+                    returnVal = errorValues.Success;
                 }
 
                 // Prüfe, ob ein Verbindungsstring überhaupt vorhanden ist
                 if (string.IsNullOrEmpty(connection.ConnectionString))
                 {
-                    returnVal = -1; // Fehlercode -1 für ungültige Verbindungszeichenfolge
+                    returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
                 }
 
                 // Prüfen, ob der Server erreichbar ist durch Anpingen
@@ -90,7 +91,7 @@ namespace DbLib
 
                     if (reply.Status != IPStatus.Success)
                         {
-                            returnVal = -2; // Fehlercode -2 für nicht erreichbaren Server
+                            returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
                         }
                 }
 
@@ -99,13 +100,13 @@ namespace DbLib
                 {
                     connection.Open();
                 }
-                returnVal = 0;
+                returnVal = errorValues.Success;
 
             }
-            // Allgemeiner Fehler
+            // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
-                returnVal = -3;
+                returnVal = errorValues.UnknownError;
                 
             }
             finally { 
@@ -127,22 +128,22 @@ namespace DbLib
         /// -2 = Verbindung schon geschlossen
         /// -3 = anderer Fehler ist aufgetreten
         /// </returns>
-        public int closeConnection()
+        public errorValues closeConnection()
         {
-            int returnVal;
+             errorValues returnVal;
             try
             {
 
                 // Es ist keine gültige Verbindung vorhanden welche man schließen könnte
                 if (connection == null)
                 {
-                    returnVal = -1; // Fehlercode -1 für ungültige Verbindung
+                    returnVal = errorValues.ConnectionInvalid; // Fehlercode -1 für ungültige Verbindung
                 }
 
                 // Überprüfen, ob die Verbindung bereits geschlossen ist
                 else if (connection.State == System.Data.ConnectionState.Closed)
                 {
-                    returnVal = -2;
+                    returnVal = errorValues.ConnectionAlreadClosed;
                 }
 
 
@@ -154,10 +155,10 @@ namespace DbLib
                 returnVal = 0; // Verbindung wurde erfolgreich geschlossen
 
             }
-            // Allgemeiner Fehler
+            // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
-                returnVal = -3; 
+                returnVal = errorValues.UnknownError; 
             }
             finally{ 
             }
@@ -222,9 +223,18 @@ namespace DbLib
                         // Lade die Spaltenstruktur des DataReaders in den DataTable
                         dt.Load(reader);
                     }
-                }                
-            }
+                }
 
+
+                foreach (DataRow row in dt.Rows)
+                {
+                    foreach (DataColumn col in dt.Columns)
+                    {
+                        Console.Write($"{row[col]} | ");  // Gibt den Wert der aktuellen Zelle aus
+                    }
+                    Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
+                }
+            }
             catch (Exception e)
             {
             }
@@ -239,13 +249,14 @@ namespace DbLib
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        public DataTable executeQuery(string query)
+        public errorValues executeQuery(string query)
         {
 
-            DataTable dt = null;  // Erstellen eines leeren DataTable
+            errorValues returnVal;  // Erstellen eines leeren DataTable
             try
             {
-                dt = new DataTable();
+
+                DataTable dt = new DataTable();
                 // Sicherstellen, dass die Verbindung geöffnet ist
                 if (connection.State == ConnectionState.Closed)
                 {
@@ -260,7 +271,12 @@ namespace DbLib
                         // Lade die Spaltenstruktur des DataReaders in den DataTable
                         dt.Load(reader);
                     }
-                }                
+                }
+
+                if (dt.Rows.Count == 0)
+                {
+                    returnVal = errorValues.NoData;
+                }
             }
 
             catch (Exception e)
@@ -270,7 +286,7 @@ namespace DbLib
             finally
             {
             }
-            return dt;
+            return errorValues.Success;
         }
 
         /// <summary>
@@ -473,7 +489,6 @@ namespace DbLib
 
             return returnVal;
         }
-
 
         ~MySqlAccess()
         {
