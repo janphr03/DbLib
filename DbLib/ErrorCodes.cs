@@ -1,9 +1,14 @@
 
     public enum errorValues
     {
-        
-        verbindungszeichenfolge = -1,  // 0
-        serverNichtErreichbar = -2,  // 1
-        keineVerbindungsinformationenErhalten = -3,  // 2
-        
-    }
+        Success = 0,
+        UnknownError = -1,              // unbekannterFehler
+        QueryError = -2,                // MySql Query fehlerhaft
+        ConnectionFailed = -3,          // Verbindung zur DB nicht möglich
+        ConnectionQueryError = -4,      // verbindungszeichnfolge
+        ServerConnectionFailed = -5,    // Server konnte nicht gepingt werden
+        ConnectionAlreadClosed = -6,    // Verbindung ist bereits geschlossen 
+        ConnectionInvalid = -7,         // Verbindung ist nicht vorhanden z.B. NULL
+        NoData = -8,                    // Es wurden keine Daten an das Objekt übergeben
+        emptyInputParameters = -9,     
+           }
