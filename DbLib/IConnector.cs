@@ -8,8 +8,10 @@ namespace DbLib
     {
         public errorValues openConnection();
         public errorValues closeConnection();
-        public errorValues executeQuery(string query
+        public errorValues executeQuery(string query);
         public errorValues select(string column, string tableName, string whereCondition, string orderBy);
+        public errorValues select(string query);
+
         public errorValues insert(string tableName, string values);
         public errorValues update (string tableName, string set, string whereCondition, string join);
         public errorValues delete(string tableName,  string wherecondition, string limit);

@@ -15,17 +15,16 @@ namespace DbLib
             // Die Verbindung wird zu einer beliebigen DB hergestellt (derzeit nur MySql)
             IConnector connector = new MySqlAccess("testprotocol", "localhost", "root", "password");
 
-            int res = (int)connector.openConnection();
-            Console.WriteLine(res);
             // connector.select("*", "employees", "", "");
 
-            //connector.update("employees", "last_name = 'Herrmann'", "employee_id = 1", "");
+
+            //Console.WriteLine(connector.insert("", ""));
             //connector.insert("employees", "7, 'Mo', 'Zo'");
             //connector.delete("employees", "last_name = 'Zo'", "1"
 
             //DataTable resultTable = connector.select("*", "testcase, tester", ".TesterID = tester.TesterID", "");
 
-
+           Console.WriteLine (connector.select("Select * From Tester;"));
 
 
 
