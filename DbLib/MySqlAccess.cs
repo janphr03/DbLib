@@ -3,6 +3,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Utilities;
 
 namespace DbLib
@@ -16,6 +17,7 @@ namespace DbLib
         private string password;
 
         private MySql.Data.MySqlClient.MySqlConnection connection;
+        private readonly ILogger<MySqlAccess> logger;
         
         public errorValues flagStatus = 0;  // Verbindungsstatus
 
@@ -31,7 +33,7 @@ namespace DbLib
         /// 
         /// flagStatus = 0 -> Die Verbindung konnte hergestellt werden
         /// flagStatus != 0 -> Beim Herstellen der Verbindung muss ein Fehler aufgetreten sein und das Objekt wurde fehlerhaft instanziiert
-        public MySqlAccess(string database, string server, string uid, string password)
+        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus != 0 für ungültige Verbindung
@@ -47,6 +49,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
+            this. logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Verbindung öffnen 
             flagStatus = openConnection();
@@ -101,12 +104,14 @@ namespace DbLib
                     connection.Open();
                 }
                 returnVal = errorValues.Success;
+                logger.LogInformation("Connection opened succesfully");
 
             }
             // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
+                logger.LogWarning("Connection couldnt been established");
                 
             }
             finally { 
@@ -230,14 +235,12 @@ namespace DbLib
         /// <returns>
         /// Es wird der DataTable als Objekt zurückgegeben
         /// </returns>
-
-        public errorValues select(string query)
+        public errorValues select(string column, string tableName, string whereCondition = "", string orderBy = "")
         {
-
-            errorValues returnVal = errorValues.Success;  // Erstellen eines leeren DataTable
+            errorValues returnVal = errorValues.Success;    
+            string querySelect = "";
             try
             {
-
                 DataTable dt = new DataTable();
                 // Sicherstellen, dass die Verbindung geöffnet ist
                 if (connection.State == ConnectionState.Closed)
@@ -245,16 +248,41 @@ namespace DbLib
                     openConnection();
                 }
 
-                // MySqlCommand erstellen und Abfrage ausführen
-                using (MySqlCommand cmd = new MySqlCommand(query, connection))
+                // SQL-Abfrage-String zusammensetzen
+                if(string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
                 {
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Lade die Spaltenstruktur des DataReaders in den DataTable
-                        dt.Load(reader);
-                    }
+                    returnVal = errorValues.emptyInputParameters;
+                }
+                else
+                {
+                    querySelect = $" SELECT {column} FROM {tableName}";
                 }
 
+                // WHERE-Bedingung hinzufügen falls vorhanden
+                if (!string.IsNullOrEmpty(whereCondition))
+                {
+                    querySelect += $" WHERE {whereCondition}";
+                }
+
+                // ORDER BY hinzufügen falls vorhanden
+                if (!string.IsNullOrEmpty(orderBy))
+                {
+                    querySelect += $" ORDER BY {orderBy}";
+                }
+
+                // MySqlCommand erstellen und Abfrage ausführen nur wenn es eine Query gibt
+                if (!string.IsNullOrEmpty(querySelect))
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
+                    {
+                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            // Lade die Spaltenstruktur des DataReaders in den DataTable
+                            dt.Load(reader);
+                        }
+                    }
+                }
+                // DataTable hat keinen Inhalt
                 if (dt.Rows.Count == 0)
                 {
                     returnVal = errorValues.NoData;
@@ -270,9 +298,7 @@ namespace DbLib
                     Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
                 }
 
-
             }
-
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
@@ -283,7 +309,6 @@ namespace DbLib
             }
             return returnVal;
         }
-
 
 
         /// <summary>
