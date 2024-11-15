@@ -24,7 +24,7 @@ namespace DbLib
                 logger.Info("Datenbankverbindung erfolgreich hergestellt.");
 
                 // Beispiel einer SELECT-Abfrage
-                var result = connector.select("Select * From tester;");
+                var result = connector.select("*", "tester", "", "");
                 Console.WriteLine(result);
                 logger.Info("SELECT-Abfrage erfolgreich ausgeführt.");
             }
