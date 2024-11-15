@@ -1,39 +1,38 @@
-﻿using System.Data;
-using System.Diagnostics;
+﻿using App;
 
 namespace DbLib
 {
-
     public class Program
     {
-
         public static void Main(string[] args)
         {
+            string logFilePath = "C:\\Users\\janph\\Source\\Repos\\App\\App\\Log.txt";
 
-         
-            
-            // Die Verbindung wird zu einer beliebigen DB hergestellt (derzeit nur MySql)
-            IConnector connector = new MySqlAccess("testprotocol", "localhost", "root", "password");
+            // Sicherstellen, dass die Datei existiert
+            if (!File.Exists(logFilePath))
+            {
+                File.Create(logFilePath).Dispose(); // Datei erstellen und freigeben
+            }
 
-            // connector.select("*", "employees", "", "");
+            ILogger logger = new FileLogger(logFilePath);
 
+            try
+            {
+                // Die Verbindung wird zu einer beliebigen DB hergestellt (derzeit nur MySql)
+                IConnector connector = new MySqlAccess("testprotocol", "localhost", "root", "cnxx0383");
 
-            //Console.WriteLine(connector.insert("", ""));
-            //connector.insert("employees", "7, 'Mo', 'Zo'");
-            //connector.delete("employees", "last_name = 'Zo'", "1"
+                logger.Info("Datenbankverbindung erfolgreich hergestellt.");
 
-            //DataTable resultTable = connector.select("*", "testcase, tester", ".TesterID = tester.TesterID", "");
-
-           Console.WriteLine (connector.select("Select * From Tester;"));
-
-
-
-
-            Guid myuuid = Guid.NewGuid(); 
-            String uuid = myuuid.ToString();
-
-
+                // Beispiel einer SELECT-Abfrage
+                var result = connector.select("Select * From tester;");
+                Console.WriteLine(result);
+                logger.Info("SELECT-Abfrage erfolgreich ausgeführt.");
+            }
+            catch (Exception ex)
+            {
+                logger.Error("Fehler in der Main-Methode.", ex);
+                Console.WriteLine("Ein Fehler ist aufgetreten. Details im Logfile.");
+            }
         }
-    }   
+    }
 }
-
