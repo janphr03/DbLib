@@ -3,6 +3,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Utilities;
 
 namespace DbLib
@@ -16,6 +17,7 @@ namespace DbLib
         private string password;
 
         private MySql.Data.MySqlClient.MySqlConnection connection;
+        private readonly ILogger<MySqlAccess> logger;
         
         public errorValues flagStatus = 0;  // Verbindungsstatus
 
@@ -31,7 +33,7 @@ namespace DbLib
         /// 
         /// flagStatus = 0 -> Die Verbindung konnte hergestellt werden
         /// flagStatus != 0 -> Beim Herstellen der Verbindung muss ein Fehler aufgetreten sein und das Objekt wurde fehlerhaft instanziiert
-        public MySqlAccess(string database, string server, string uid, string password)
+        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus != 0 für ungültige Verbindung
@@ -47,6 +49,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
+            this. logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Verbindung öffnen 
             flagStatus = openConnection();
@@ -101,12 +104,14 @@ namespace DbLib
                     connection.Open();
                 }
                 returnVal = errorValues.Success;
+                logger.LogInformation("Connection opened succesfully");
 
             }
             // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
+                logger.LogWarning("Connection couldnt been established");
                 
             }
             finally { 
@@ -304,60 +309,6 @@ namespace DbLib
             }
             return returnVal;
         }
-
-        public errorValues select(string query)
-        {
-
-            errorValues returnVal = errorValues.Success;  // Erstellen eines leeren DataTable
-            try
-            {
-
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
-                if (connection.State == ConnectionState.Closed)
-                {
-                    openConnection();
-                }
-
-                // MySqlCommand erstellen und Abfrage ausführen
-                using (MySqlCommand cmd = new MySqlCommand(query, connection))
-                {
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Lade die Spaltenstruktur des DataReaders in den DataTable
-                        dt.Load(reader);
-                    }
-                }
-
-                if (dt.Rows.Count == 0)
-                {
-                    returnVal = errorValues.NoData;
-                }
-
-
-                foreach (DataRow row in dt.Rows)
-                {
-                    foreach (DataColumn col in dt.Columns)
-                    {
-                        Console.Write($"{row[col]} | ");  // Gibt den Wert der aktuellen Zelle aus
-                    }
-                    Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
-                }
-
-
-            }
-
-            catch (Exception e)
-            {
-                returnVal = errorValues.UnknownError;
-            }
-
-            finally
-            {
-            }
-            return returnVal;
-        }
-
 
 
         /// <summary>
