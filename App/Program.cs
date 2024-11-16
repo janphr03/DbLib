@@ -8,9 +8,9 @@ class Program
     {
         // Konfiguriere Serilog, um in eine Datei zu loggen
         Log.Logger = new LoggerConfiguration()
-            .WriteTo.File("logs/logfile.txt", rollingInterval: RollingInterval.Day) // Tägliches Rollieren der Log-Datei
-            .CreateLogger();
-
+        .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
+        .CreateLogger();        
+        
         // Erstelle eine LoggerFactory und füge Serilog als Logger hinzu
         using var loggerFactory = LoggerFactory.Create(builder =>
         {

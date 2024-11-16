@@ -72,6 +72,7 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
+            logger.LogInformation($"Open connection: {this.database}");
             errorValues returnVal = errorValues.Success;
             try
             {
@@ -79,12 +80,14 @@ namespace DbLib
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
                     returnVal = errorValues.Success;
+                    logger.LogInformation($"Open connection: {connection.State}");
                 }
 
                 // Prüfe, ob ein Verbindungsstring überhaupt vorhanden ist
                 if (string.IsNullOrEmpty(connection.ConnectionString))
                 {
                     returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
+                    logger.LogError("Open Connection: leere Verbindungszeichenfolge");
                 }
 
                 // Prüfen, ob der Server erreichbar ist durch Anpingen
@@ -95,6 +98,7 @@ namespace DbLib
                     if (reply.Status != IPStatus.Success)
                         {
                             returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
+                            logger.LogError("Open Connection: Server nicht erreichbar");
                         }
                 }
 
@@ -102,16 +106,17 @@ namespace DbLib
                 if (connection.State == System.Data.ConnectionState.Closed)
                 {
                     connection.Open();
+
                 }
                 returnVal = errorValues.Success;
-                logger.LogInformation("Connection opened succesfully");
+                logger.LogInformation("Verbindung erfolgreich geöffnet");
 
             }
             // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning("Connection couldnt been established");
+                logger.LogWarning("Verbindung konnte nicht aufgebaut werden");
                 
             }
             finally { 
@@ -142,13 +147,16 @@ namespace DbLib
                 // Es ist keine gültige Verbindung vorhanden welche man schließen könnte
                 if (connection == null)
                 {
+
                     returnVal = errorValues.ConnectionInvalid; // Fehlercode -1 für ungültige Verbindung
+                    logger.LogWarning("Die Verbindung ist NULL");
                 }
 
                 // Überprüfen, ob die Verbindung bereits geschlossen ist
                 else if (connection.State == System.Data.ConnectionState.Closed)
                 {
                     returnVal = errorValues.ConnectionAlreadClosed;
+                    logger.LogInformation("Verbindung geschlossen");
                 }
 
 
@@ -156,13 +164,15 @@ namespace DbLib
                 else
                 {
                     connection.Close();
+                    logger.LogInformation("Verbindung geschlossen");
                 }
                 
             }
             // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
-                returnVal = errorValues.UnknownError; 
+                returnVal = errorValues.UnknownError;
+                logger.LogWarning("Verbindung konnte nicht geschlossen werden");
             }
             finally{ 
             }
@@ -239,6 +249,7 @@ namespace DbLib
         {
             errorValues returnVal = errorValues.Success;    
             string querySelect = "";
+            logger.LogInformation("select gestartet");
             try
             {
                 DataTable dt = new DataTable();
@@ -246,28 +257,35 @@ namespace DbLib
                 if (connection.State == ConnectionState.Closed)
                 {
                     openConnection();
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                 }
 
                 // SQL-Abfrage-String zusammensetzen
                 if(string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
                 {
                     returnVal = errorValues.emptyInputParameters;
+                    logger.LogError("Spalten- oder Tabllenname ist leer");
                 }
                 else
                 {
                     querySelect = $" SELECT {column} FROM {tableName}";
+                    logger.LogInformation("Spalte und Tabelle in Sql Statement eingesetzt");
+
                 }
 
                 // WHERE-Bedingung hinzufügen falls vorhanden
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     querySelect += $" WHERE {whereCondition}";
+                    logger.LogInformation("WHERE Condition hinzugefügt");
                 }
 
                 // ORDER BY hinzufügen falls vorhanden
                 if (!string.IsNullOrEmpty(orderBy))
                 {
                     querySelect += $" ORDER BY {orderBy}";
+                    logger.LogInformation("ORDER BY hinzugefügt ");
+
                 }
 
                 // MySqlCommand erstellen und Abfrage ausführen nur wenn es eine Query gibt
@@ -286,9 +304,10 @@ namespace DbLib
                 if (dt.Rows.Count == 0)
                 {
                     returnVal = errorValues.NoData;
+                    logger.LogError("Es gibt keine Daten aus der Select-Anfrage");
                 }
 
-
+                logger.LogInformation("Wird über Data Table ausgegeben");
                 foreach (DataRow row in dt.Rows)
                 {
                     foreach (DataColumn col in dt.Columns)
@@ -302,6 +321,7 @@ namespace DbLib
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
+                logger.LogError("Es ist ein unbekannter Fehler aufgetreten");
             }
 
             finally
