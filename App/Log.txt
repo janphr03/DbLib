@@ -1,8 +1,0 @@
-2024-11-15 20:27:25 [INFO] Datenbankverbindung erfolgreich hergestellt.
-2024-11-15 20:27:25 [INFO] SELECT-Abfrage erfolgreich ausgeführt.
-2024-11-15 20:33:12 [INFO] Datenbankverbindung erfolgreich hergestellt.
-2024-11-15 20:33:12 [INFO] SELECT-Abfrage erfolgreich ausgeführt.
-2024-11-15 20:42:10 [INFO] Datenbankverbindung erfolgreich hergestellt.
-2024-11-15 20:42:10 [INFO] SELECT-Abfrage erfolgreich ausgeführt.
-2024-11-15 20:53:20 [INFO] Datenbankverbindung erfolgreich hergestellt.
-2024-11-15 20:53:20 [INFO] SELECT-Abfrage erfolgreich ausgeführt.
