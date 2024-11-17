@@ -1,38 +1,32 @@
-﻿using App;
+﻿using DbLib;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
-namespace DbLib
+class Program
 {
-    public class Program
+    static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        // Konfiguriere Serilog, um in eine Datei zu loggen
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Debug()
+        .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
+        .CreateLogger();        
+        
+        // Erstelle eine LoggerFactory und füge Serilog als Logger hinzu
+        using var loggerFactory = LoggerFactory.Create(builder =>
         {
-            string logFilePath = "C:\\Users\\janph\\Source\\Repos\\App\\App\\Log.txt";
+            builder.AddSerilog(); // Serilog als Logging-Provider hinzufügen
+        });
 
-            // Sicherstellen, dass die Datei existiert
-            if (!File.Exists(logFilePath))
-            {
-                File.Create(logFilePath).Dispose(); // Datei erstellen und freigeben
-            }
+        // Logger für MySqlAccess erstellen
+        ILogger<MySqlAccess> logger = loggerFactory.CreateLogger<MySqlAccess>();
 
-            ILogger logger = new FileLogger(logFilePath);
+        // MySqlAccess-Instanz mit dem Logger erstellen
+        var mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "password", logger);
 
-            try
-            {
-                // Die Verbindung wird zu einer beliebigen DB hergestellt (derzeit nur MySql)
-                IConnector connector = new MySqlAccess("testprotocol", "localhost", "root", "cnxx0383");
+        // Beispielaufruf für eine Methode
+        mySqlAccess.select("*", "tester");
 
-                logger.Info("Datenbankverbindung erfolgreich hergestellt.");
-
-                // Beispiel einer SELECT-Abfrage
-                var result = connector.select("Select * From tester;");
-                Console.WriteLine(result);
-                logger.Info("SELECT-Abfrage erfolgreich ausgeführt.");
-            }
-            catch (Exception ex)
-            {
-                logger.Error("Fehler in der Main-Methode.", ex);
-                Console.WriteLine("Ein Fehler ist aufgetreten. Details im Logfile.");
-            }
-        }
+        // Beende das Logging (optional, wird normalerweise beim Programmende automatisch aufgerufen)
+        Log.CloseAndFlush();
     }
 }
