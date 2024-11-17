@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
@@ -181,7 +181,11 @@ namespace DbLib
 
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+using System;
+using System.Data;
+using System.Net.NetworkInformation;
+using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Logging;
         /// <summary>
         /// erhält festgelegte Parameter beim Methodenaufruf, welche zu einem MySql Befehl zusammengeführt werden.
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
