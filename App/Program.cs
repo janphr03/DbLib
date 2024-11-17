@@ -7,7 +7,7 @@ class Program
     static void Main(string[] args)
     {
         // Konfiguriere Serilog, um in eine Datei zu loggen
-        Log.Logger = new LoggerConfiguration()
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Debug()
         .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
         .CreateLogger();        
         
@@ -21,7 +21,7 @@ class Program
         ILogger<MySqlAccess> logger = loggerFactory.CreateLogger<MySqlAccess>();
 
         // MySqlAccess-Instanz mit dem Logger erstellen
-        var mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "cnxx0383", logger);
+        var mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "password", logger);
 
         // Beispielaufruf für eine Methode
         mySqlAccess.select("*", "tester");

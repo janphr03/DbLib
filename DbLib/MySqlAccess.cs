@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Data;
-using System.Diagnostics;
 using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Utilities;
 
 namespace DbLib
 {
@@ -72,7 +70,7 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
-            logger.LogInformation($"Open connection: {this.database}");
+            logger.LogInformation($"Open connection to: {this.database}");
             errorValues returnVal = errorValues.Success;
             try
             {
@@ -87,7 +85,7 @@ namespace DbLib
                 if (string.IsNullOrEmpty(connection.ConnectionString))
                 {
                     returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
-                    logger.LogError("Open Connection: leere Verbindungszeichenfolge");
+                    logger.LogWarning("Open Connection: leere Verbindungszeichenfolge");
                 }
 
                 // Prüfen, ob der Server erreichbar ist durch Anpingen
@@ -98,7 +96,7 @@ namespace DbLib
                     if (reply.Status != IPStatus.Success)
                         {
                             returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
-                            logger.LogError("Open Connection: Server nicht erreichbar");
+                            logger.LogWarning("Open Connection: Server nicht erreichbar");
                         }
                 }
 
@@ -121,6 +119,7 @@ namespace DbLib
             }
             finally { 
             }
+            logger.LogInformation($"Status am Ende von openConnection: {returnVal}");
             return returnVal;
 
             // Fehler falls die Verbindung nicht geöffnet werden konnte
@@ -172,7 +171,7 @@ namespace DbLib
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning("Verbindung konnte nicht geschlossen werden");
+                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten [{e}]");
             }
             finally{ 
             }
@@ -182,55 +181,6 @@ namespace DbLib
 
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        public errorValues executeQuery(string query)
-        {
-
-            errorValues returnVal = errorValues.Success;  // Erstellen eines leeren DataTable
-            try
-            {
-
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
-                if (connection.State == ConnectionState.Closed)
-                {
-                    openConnection();
-                }
-
-                // MySqlCommand erstellen und Abfrage ausführen
-                using (MySqlCommand cmd = new MySqlCommand(query, connection))
-                {
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Lade die Spaltenstruktur des DataReaders in den DataTable
-                        dt.Load(reader);
-                    }
-                }
-
-                if (dt.Rows.Count == 0)
-                {
-                    returnVal = errorValues.NoData;
-                }
-
-            }
-
-            catch (Exception e)
-            {
-                returnVal = errorValues.UnknownError;
-            }
-
-            finally
-            {
-            }
-            return returnVal;
-        }
-
 
         /// <summary>
         /// erhält festgelegte Parameter beim Methodenaufruf, welche zu einem MySql Befehl zusammengeführt werden.
@@ -249,7 +199,7 @@ namespace DbLib
         {
             errorValues returnVal = errorValues.Success;    
             string querySelect = "";
-            logger.LogInformation("select gestartet");
+            logger.LogInformation("SELECT Methode gestartet");
             try
             {
                 DataTable dt = new DataTable();
@@ -264,12 +214,12 @@ namespace DbLib
                 if(string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
                 {
                     returnVal = errorValues.emptyInputParameters;
-                    logger.LogError("Spalten- oder Tabllenname ist leer");
+                    logger.LogWarning("Spalten- oder Tabllenname ist leer");
                 }
                 else
                 {
                     querySelect = $" SELECT {column} FROM {tableName}";
-                    logger.LogInformation("Spalte und Tabelle in Sql Statement eingesetzt");
+                    logger.LogDebug($"column: [{column}] und tableName: [{tableName}] in Sql Statement eingesetzt");
 
                 }
 
@@ -277,14 +227,14 @@ namespace DbLib
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     querySelect += $" WHERE {whereCondition}";
-                    logger.LogInformation("WHERE Condition hinzugefügt");
+                    logger.LogDebug($"WHERE Condition hinzugefügt [{whereCondition}]");
                 }
 
                 // ORDER BY hinzufügen falls vorhanden
                 if (!string.IsNullOrEmpty(orderBy))
                 {
                     querySelect += $" ORDER BY {orderBy}";
-                    logger.LogInformation("ORDER BY hinzugefügt ");
+                    logger.LogDebug($"ORDER BY hinzugefügt: [{orderBy}] ");
 
                 }
 
@@ -293,8 +243,10 @@ namespace DbLib
                 {
                     using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
                     {
+                        logger.LogDebug($"MySqlCommand mit [{querySelect}] wird an MySqlDataReader übergeben");
                         using (MySqlDataReader reader = cmd.ExecuteReader())
                         {
+                            logger.LogInformation($"der Befehl wurde ausgelesen und wird in den DataTable geladen");
                             // Lade die Spaltenstruktur des DataReaders in den DataTable
                             dt.Load(reader);
                         }
@@ -304,7 +256,7 @@ namespace DbLib
                 if (dt.Rows.Count == 0)
                 {
                     returnVal = errorValues.NoData;
-                    logger.LogError("Es gibt keine Daten aus der Select-Anfrage");
+                    logger.LogWarning("Es gibt keine Daten aus der Select-Anfrage");
                 }
 
                 logger.LogInformation("Wird über Data Table ausgegeben");
@@ -321,12 +273,13 @@ namespace DbLib
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogError("Es ist ein unbekannter Fehler aufgetreten");
+                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten[{e}]");
             }
 
             finally
             {
             }
+            logger.LogDebug($"Status von SELECT vor beenden: {returnVal}");
             return returnVal;
         }
 
@@ -348,6 +301,7 @@ namespace DbLib
         /// </returns>
         public errorValues update(string tableName, string set, string whereCondition = "", string join = "")
         {
+            logger.LogInformation("UPDATE Methode gestartet");
              errorValues returnVal = errorValues.Success;
             string queryUpdate = "";
             try
@@ -356,6 +310,7 @@ namespace DbLib
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(set))
                 {
                     returnVal = errorValues.emptyInputParameters;
+                    logger.LogWarning("tableName oder set-Wert ist leer");
                 }
 
                 // Grundlegende MySql-Abfrage erstellen sofern tableName und set string-Werte enthalten
@@ -365,12 +320,15 @@ namespace DbLib
 
                     // SET-Teil der Abfrage hinzufügen
                     queryUpdate += $" SET {set}";
+                    logger.LogDebug($"tableName: [{tableName}] und set: [{set}] in Sql Statement eingesetzt");
+
                 }
 
                 // JOIN hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(join))
                 {
                     queryUpdate += $" {join}";
+                    logger.LogDebug($"JOIN hinzugefügt: [{join}]");
                 }
 
 
@@ -378,11 +336,13 @@ namespace DbLib
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     queryUpdate += $" WHERE {whereCondition}";
+                    logger.LogDebug($"WHERE Condition´hinzugefügt: [{whereCondition}]");
                 }
 
                 // Sicherstellen, dass die Verbindung geöffnet ist
                 if (connection.State == ConnectionState.Closed)
                 {
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
                 }
 
@@ -391,7 +351,8 @@ namespace DbLib
                 // MySql-Befehl ausführen wenn die Query nicht leer ist
                 using (MySqlCommand cmd = new MySqlCommand(queryUpdate, connection))
                 {
-                    int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und gibt die Anzahl der betroffenen Zeilen zurück
+                        logger.LogDebug($"MySqlCommand [{queryUpdate}] wird ausgeführt");
+                        int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und gibt die Anzahl der betroffenen Zeilen zurück
                     returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData; // Setzt den Enum basierend auf dem Ergebnis
                 }
             }
@@ -399,14 +360,17 @@ namespace DbLib
             // Es ist ein anderer Fehler aufgetreten
             catch (Exception e)
             {
-                returnVal = errorValues.UnknownError;  
+                returnVal = errorValues.UnknownError;
+                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten [{e}]");
             }
 
             finally 
             { 
             }
 
+            logger.LogInformation($"Status von UPDATE vor beenden: {returnVal}");
             return returnVal;
+            
         }
 
 
@@ -425,6 +389,7 @@ namespace DbLib
         /// </returns>
         public errorValues insert(string tableName, string values)
         {
+            logger.LogInformation("INSERT gestartet");
             // Speichert die Fehlermeldungen in Form von enum Werten
             errorValues returnVal = errorValues.Success;
             try
@@ -434,11 +399,14 @@ namespace DbLib
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(values))
                 {
                     returnVal = errorValues.emptyInputParameters;
+                    logger.LogWarning("tableName oder values-Wert leer");
+
                 }
                 // Grundlegende MySql-Abfrage erstellen, sofern table name und values nicht leer sind
                 else
                 {
-                    queryInsert = $" INSERT INTO {tableName}"; 
+                    queryInsert = $" INSERT INTO {tableName}";
+                    logger.LogDebug($"tableName hinzugefügt: [{tableName}]");
                 }
 
 
@@ -446,13 +414,16 @@ namespace DbLib
                 if (!string.IsNullOrEmpty(values))
                 {
                     queryInsert += $" VALUES({values});";
+                    logger.LogDebug($"VALUES hinzugefügt: [{values}]");
                 }
 
 
                 // Sicherstellen, dass die Verbindung geöffnet ist
                 if (connection.State == ConnectionState.Closed)
                 {
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
+
                 }
 
                 if (!string.IsNullOrEmpty(queryInsert))
@@ -460,6 +431,7 @@ namespace DbLib
                     // MySql-Befehl ausführen, wenn Query nicht leer ist
                     using (MySqlCommand cmd = new MySqlCommand(queryInsert, connection))
                     {
+                        logger.LogDebug($"MySqlCommand [{queryInsert}] wird ausgeführt");
                         int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und speichert die Anzahl der betroffenen Zeilen
                         returnVal = affectedRows < 0 ? errorValues.Success : errorValues.NoData; //
                     }
@@ -469,12 +441,14 @@ namespace DbLib
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
+                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten {e}");
             }
 
             finally
             {
             }
 
+            logger.LogInformation($"Status von INSERT vor beenden: {returnVal}");
             return returnVal;
         }
 
@@ -494,6 +468,7 @@ namespace DbLib
         /// </returns>
         public errorValues delete(string tableName, string whereCondition, string limit)
         {
+            logger.LogInformation("DELETE gestartet");
             errorValues returnVal = errorValues.Success;
             try
             {
@@ -502,22 +477,28 @@ namespace DbLib
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(whereCondition))
                 {
                     returnVal = errorValues.emptyInputParameters;
-                }
+                    logger.LogWarning($"tableName: [{tableName}] oder WHERE condition: [{whereCondition}] leer");
+
+                                    }
                 // Grundlegende MySql-Abfrage erstellen, sofern table name und values nicht leer sind
                 else
                 {
                     queryDelete = $" DELETE FROM {tableName} WHERE {whereCondition}";
+                    logger.LogDebug($"tableName: [{tableName}] und WHERE condiotion: [{whereCondition}] eingesetzt");
                 }
 
                 // WHERE-Bedingung hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(limit))
                 {
                     queryDelete += $" LIMIT {limit};";
+                    logger.LogDebug($"LIMIT eingesetzt: [{limit}]");
                 }
 
                 // Sicherstellen, dass die Verbindung geöffnet ist
                 if (connection.State == ConnectionState.Closed)
                 {
+
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
                 }
 
@@ -526,6 +507,8 @@ namespace DbLib
                 {
                     using (MySqlCommand cmd = new MySqlCommand(queryDelete, connection))
                     {
+
+                        logger.LogDebug($"MySqlCommand [{queryDelete}] wird ausgeführt");
                         int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und speichert die Anzahl der betroffenen Zeilen
                         returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData;
                     }
@@ -535,11 +518,12 @@ namespace DbLib
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
+                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten: [{e}]");
             }
             finally
             {
             }
-
+            logger.LogInformation($"Status von DELETE vor beenden: [{returnVal}]");
             return returnVal;
         }
 
