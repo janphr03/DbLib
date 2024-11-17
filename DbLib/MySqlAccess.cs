@@ -5,6 +5,7 @@ using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Utilities;
+using System.Diagnostics.Eventing.Reader;
 
 namespace DbLib
 {
@@ -183,53 +184,6 @@ namespace DbLib
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        public errorValues executeQuery(string query)
-        {
-
-            errorValues returnVal = errorValues.Success;  // Erstellen eines leeren DataTable
-            try
-            {
-
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
-                if (connection.State == ConnectionState.Closed)
-                {
-                    openConnection();
-                }
-
-                // MySqlCommand erstellen und Abfrage ausführen
-                using (MySqlCommand cmd = new MySqlCommand(query, connection))
-                {
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Lade die Spaltenstruktur des DataReaders in den DataTable
-                        dt.Load(reader);
-                    }
-                }
-
-                if (dt.Rows.Count == 0)
-                {
-                    returnVal = errorValues.NoData;
-                }
-
-            }
-
-            catch (Exception e)
-            {
-                returnVal = errorValues.UnknownError;
-            }
-
-            finally
-            {
-            }
-            return returnVal;
-        }
 
 
         /// <summary>
