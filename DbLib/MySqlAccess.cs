@@ -305,58 +305,6 @@ namespace DbLib
             return returnVal;
         }
 
-        public errorValues select(string query)
-        {
-
-            errorValues returnVal = errorValues.Success;  // Erstellen eines leeren DataTable
-            try
-            {
-
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
-                if (connection.State == ConnectionState.Closed)
-                {
-                    openConnection();
-                }
-
-                // MySqlCommand erstellen und Abfrage ausführen
-                using (MySqlCommand cmd = new MySqlCommand(query, connection))
-                {
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Lade die Spaltenstruktur des DataReaders in den DataTable
-                        dt.Load(reader);
-                    }
-                }
-
-                if (dt.Rows.Count == 0)
-                {
-                    returnVal = errorValues.NoData;
-                }
-
-
-                foreach (DataRow row in dt.Rows)
-                {
-                    foreach (DataColumn col in dt.Columns)
-                    {
-                        Console.Write($"{row[col]} | ");  // Gibt den Wert der aktuellen Zelle aus
-                    }
-                    Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
-                }
-
-
-            }
-
-            catch (Exception e)
-            {
-                returnVal = errorValues.UnknownError;
-            }
-
-            finally
-            {
-            }
-            return returnVal;
-        }
 
 
 

@@ -23,14 +23,9 @@ namespace DbLib
             //connector.delete("employees", "last_name = 'Zo'", "1"
 
             //DataTable resultTable = connector.select("*", "testcase, tester", ".TesterID = tester.TesterID", "");
+            
+            Console.WriteLine (connector.select("Select * From Tester;"));
 
-           Console.WriteLine (connector.select("Select * From Tester;"));
-
-
-
-
-            Guid myuuid = Guid.NewGuid(); 
-            String uuid = myuuid.ToString();
 
 
         }

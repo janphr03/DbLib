@@ -7,14 +7,20 @@ namespace App
     {
         private readonly string _filePath;
 
+        // Optional: Werte für Benutzername und IP festlegen, falls diese statisch sein sollen
+        private readonly string _ipAddress = "-";
+        private readonly string _username = "-";
+
         public FileLogger(string filePath)
         {
             _filePath = filePath;
         }
 
-        private void Log(string level, string message)
+        private void Log(string level, string message, int statusCode = 200, int dataSize = 0, string referer = "-", string userAgent = "-")
         {
-            string logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {message}";
+            // Formatierung des Datums im Common Log Format
+            string logMessage = $"{_ipAddress} {_username} [{DateTime.Now:dd/MMM/yyyy:HH:mm:ss zzz}] \"{level}: {message}\" {statusCode} {dataSize} \"{referer}\" \"{userAgent}\"";
+
             File.AppendAllText(_filePath, logMessage + Environment.NewLine);
         }
 
@@ -40,7 +46,7 @@ namespace App
             {
                 errorMessage += $"{Environment.NewLine}Exception: {ex}";
             }
-            Log("ERROR", errorMessage);
+            Log("ERROR", errorMessage, 500);  // Fehlercode 500 für allgemeine Fehler
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace App
 {
+    // Definition des ILogger-Interfaces
     public interface ILogger
     {
         void Trace(string message);
