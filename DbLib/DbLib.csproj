@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
     <PackageReference Include="MySql.Data" Version="9.0.0" />
   </ItemGroup>
 

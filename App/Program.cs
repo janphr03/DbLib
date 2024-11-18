@@ -1,34 +1,32 @@
-﻿using System.Data;
-using System.Diagnostics;
+﻿using DbLib;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
-namespace DbLib
+class Program
 {
-
-    public class Program
+    static void Main(string[] args)
     {
-
-        public static void Main(string[] args)
+        // Konfiguriere Serilog, um in eine Datei zu loggen
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Debug()
+        .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
+        .CreateLogger();        
+        
+        // Erstelle eine LoggerFactory und füge Serilog als Logger hinzu
+        using var loggerFactory = LoggerFactory.Create(builder =>
         {
+            builder.AddSerilog(); // Serilog als Logging-Provider hinzufügen
+        });
 
-         
-            
-            // Die Verbindung wird zu einer beliebigen DB hergestellt (derzeit nur MySql)
-            IConnector connector = new MySqlAccess("testprotocol", "localhost", "root", "password");
+        // Logger für MySqlAccess erstellen
+        ILogger<MySqlAccess> logger = loggerFactory.CreateLogger<MySqlAccess>();
 
-            // connector.select("*", "employees", "", "");
+        // MySqlAccess-Instanz mit dem Logger erstellen
+        var mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "password", logger);
 
+        // Beispielaufruf für eine Methode
+        mySqlAccess.select("*", "tester");
 
-            //Console.WriteLine(connector.insert("", ""));
-            //connector.insert("employees", "7, 'Mo', 'Zo'");
-            //connector.delete("employees", "last_name = 'Zo'", "1"
-
-            //DataTable resultTable = connector.select("*", "testcase, tester", ".TesterID = tester.TesterID", "");
-            
-            Console.WriteLine (connector.select("Select * From Tester;"));
-
-
-
-        }
-    }   
+        // Beende das Logging (optional, wird normalerweise beim Programmende automatisch aufgerufen)
+        Log.CloseAndFlush();
+    }
 }
-
