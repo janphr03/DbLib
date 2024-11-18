@@ -21,10 +21,10 @@ class Program
         ILogger<MySqlAccess> logger = loggerFactory.CreateLogger<MySqlAccess>();
 
         // MySqlAccess-Instanz mit dem Logger erstellen
-        var mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "password", logger);
+        IConnector mySqlAccess = new MySqlAccess("testprotocol", "localhost", "root", "password", logger);
 
         // Beispielaufruf für eine Methode
-        mySqlAccess.select("*", "tester");
+        mySqlAccess.select("*", "tester", "", "");
 
         // Beende das Logging (optional, wird normalerweise beim Programmende automatisch aufgerufen)
         Log.CloseAndFlush();

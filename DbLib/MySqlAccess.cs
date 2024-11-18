@@ -14,7 +14,7 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private MySql.Data.MySqlClient.MySqlConnection connection;
+        private readonly MySql.Data.MySqlClient.MySqlConnection connection;
         private readonly ILogger<MySqlAccess> logger;
         
         public errorValues flagStatus = 0;  // Verbindungsstatus
@@ -31,7 +31,7 @@ namespace DbLib
         /// 
         /// flagStatus = 0 -> Die Verbindung konnte hergestellt werden
         /// flagStatus != 0 -> Beim Herstellen der Verbindung muss ein Fehler aufgetreten sein und das Objekt wurde fehlerhaft instanziiert
-        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
+        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>_logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus != 0 für ungültige Verbindung
@@ -47,7 +47,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
-            this. logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            slogger = _logger ?? throw new ArgumentNullException(nameof(_logger));
 
             // Verbindung öffnen 
             flagStatus = openConnection();
@@ -181,11 +181,6 @@ namespace DbLib
 
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-using System;
-using System.Data;
-using System.Net.NetworkInformation;
-using MySql.Data.MySqlClient;
-using Microsoft.Extensions.Logging;
         /// <summary>
         /// erhält festgelegte Parameter beim Methodenaufruf, welche zu einem MySql Befehl zusammengeführt werden.
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
