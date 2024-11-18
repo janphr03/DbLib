@@ -2,11 +2,13 @@ using Moq;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
 using System.Data;
+using DocumentFormat.OpenXml.Drawing.Diagrams;
 
 namespace DbLib.UnitTests
 {
     public class MySqlAccessTests
     {
+
 
         private readonly string _password;
 
@@ -136,7 +138,6 @@ namespace DbLib.UnitTests
         //-------------------------------------------------------------------------------------------------------------------------------------------------------
         //                             openConnection
         //-------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 
 
