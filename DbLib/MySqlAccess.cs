@@ -31,7 +31,7 @@ namespace DbLib
         /// 
         /// flagStatus = 0 -> Die Verbindung konnte hergestellt werden
         /// flagStatus != 0 -> Beim Herstellen der Verbindung muss ein Fehler aufgetreten sein und das Objekt wurde fehlerhaft instanziiert
-        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>_logger)
+        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus != 0 für ungültige Verbindung
@@ -47,7 +47,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
-            logger = _logger ?? throw new ArgumentNullException(nameof(_logger));
+            logger = logger ?? throw new ArgumentNullException(nameof(_logger));
 
             // Verbindung öffnen 
             flagStatus = openConnection();
