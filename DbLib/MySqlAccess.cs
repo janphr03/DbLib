@@ -17,7 +17,7 @@ namespace DbLib
         private readonly MySql.Data.MySqlClient.MySqlConnection connection;
         private readonly ILogger<MySqlAccess> logger;
         
-        public errorValues flagStatus = 0;  // Verbindungsstatus
+        public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
 
 
         /// <summary>
@@ -34,10 +34,10 @@ namespace DbLib
         public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
-            // flagStatus != 0 für ungültige Verbindung
+            // flagStatus errorValues.emptyParameters
             if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
             {
-                flagStatus = errorValues.Success;  
+                flagStatus = errorValues.emptyInputParameters;  
                 return;
             }
 
@@ -47,8 +47,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
-            logger = logger ?? throw new ArgumentNullException(nameof(_logger));
-
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             // Verbindung öffnen 
             flagStatus = openConnection();
 
@@ -70,7 +69,9 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
-            logger.LogInformation($"Open connection to: {this.database}");
+
+            logger?.LogInformation($"Open connection to: {this.database}");
+
             errorValues returnVal = errorValues.Success;
             try
             {
@@ -78,14 +79,14 @@ namespace DbLib
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
                     returnVal = errorValues.Success;
-                    logger.LogInformation($"Open connection: {connection.State}");
+                    logger?.LogInformation($"Open connection: {connection.State}");
                 }
 
                 // Prüfe, ob ein Verbindungsstring überhaupt vorhanden ist
                 if (string.IsNullOrEmpty(connection.ConnectionString))
                 {
                     returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
-                    logger.LogWarning("Open Connection: leere Verbindungszeichenfolge");
+                    logger?.LogWarning("Open Connection: leere Verbindungszeichenfolge");
                 }
 
                 // Prüfen, ob der Server erreichbar ist durch Anpingen
@@ -96,7 +97,7 @@ namespace DbLib
                     if (reply.Status != IPStatus.Success)
                         {
                             returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
-                            logger.LogWarning("Open Connection: Server nicht erreichbar");
+                            logger?.LogWarning("Open Connection: Server nicht erreichbar");
                         }
                 }
 
@@ -107,19 +108,19 @@ namespace DbLib
 
                 }
                 returnVal = errorValues.Success;
-                logger.LogInformation("Verbindung erfolgreich geöffnet");
+                logger?.LogInformation("Verbindung erfolgreich geöffnet");
 
             }
             // Allgemeiner/ unbekannter Fehler
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning("Verbindung konnte nicht aufgebaut werden");
+                logger?.LogWarning("Verbindung konnte nicht aufgebaut werden");
                 
             }
             finally { 
             }
-            logger.LogInformation($"Status am Ende von openConnection: {returnVal}");
+            logger?.LogInformation($"Status am Ende von openConnection: {returnVal}");
             return returnVal;
 
             // Fehler falls die Verbindung nicht geöffnet werden konnte

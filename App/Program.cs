@@ -6,6 +6,7 @@ class Program
 {
     static void Main(string[] args)
     {
+
         // Konfiguriere Serilog, um in eine Datei zu loggen
         Log.Logger = new LoggerConfiguration().MinimumLevel.Debug()
         .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
