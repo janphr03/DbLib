@@ -8,6 +8,16 @@ namespace DbLib.UnitTests
     public class MySqlAccessTests
     {
 
+        private readonly string _password;
+
+        public MySqlAccessTests()
+        {
+            // Passwort zentral abrufen und speichern
+            _password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD")
+                        ?? throw new InvalidOperationException("MYSQL_PASSWORD not set.");
+        }
+
+
         //-------------------------------------------------------------------------------------------------------------------------------------------------------
         //                            Konstruktor 
         //-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -22,7 +32,7 @@ namespace DbLib.UnitTests
             string database = "testprotocol";
             string server = "localhost";
             string uid = "root";
-            string password = "password";
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
 
             // Act
             var mySqlAccess = new MySqlAccess(database, server, uid, password, mockLogger.Object);
@@ -39,16 +49,16 @@ namespace DbLib.UnitTests
             string database = "testDB";
             string server = "localhost";
             string uid = "user";
-            string password = "password";
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new MySqlAccess(database, server, uid, password, null));
         }
 
         [Theory]
-        [InlineData(null, "localhost", "root", "password")]
-        [InlineData("testDB", null, "root", "password")]
-        [InlineData("testDB", "localhost", null, "password")]
+        [InlineData(null, "localhost", "root", "cnxx0383")]
+        [InlineData("testDB", null, "root", "cnxx0383")]
+        [InlineData("testDB", "localhost", null, "cnxx0383")]
         [InlineData("testDB", "localhost", "root", null)]
         public void Constructor_SetsFlagStatusToError_WhenParametersAreInvalid(string database, string server, string uid, string password)
         {
@@ -70,7 +80,7 @@ namespace DbLib.UnitTests
             string database = "testprotocol";
             string server = "localhost";
             string uid = "root";
-            string password = "password";
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
 
             // Act
             var mySqlAccess = new MySqlAccess(database, server, uid, password, mockLogger.Object);
