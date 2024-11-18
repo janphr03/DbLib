@@ -41,6 +41,7 @@ class Program
 
             // Beispielaufruf für eine Methode
             var status = mySqlAccess.select("*", "tester", "", "");
+
             if (status == errorValues.Success)
             {
                 Console.WriteLine("Daten erfolgreich abgerufen.");
