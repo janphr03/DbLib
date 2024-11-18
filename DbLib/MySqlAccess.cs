@@ -30,6 +30,7 @@ namespace DbLib
         /// <param name="server"></param>
         /// <param name="uid"></param>
         /// <param name="password"></param>
+        /// <param name="logger"></param>
         /// 
         /// <flagStatus>
         /// - Success: Verbindung erfolgreich hergestellt.
