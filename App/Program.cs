@@ -11,11 +11,6 @@ class Program
         string user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
         string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "password";
 
-        Console.WriteLine($"MYSQL_SERVER: {server}");
-        Console.WriteLine($"MYSQL_DATABASE: {database}");
-        Console.WriteLine($"MYSQL_USER: {user}");
-        Console.WriteLine($"MYSQL_PASSWORD: {password}");
-
         // Überprüfen, ob die Variablen korrekt geladen wurden
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(database) ||
             string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))

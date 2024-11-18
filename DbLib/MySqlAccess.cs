@@ -14,10 +14,12 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private readonly MySql.Data.MySqlClient.MySqlConnection connection;
+        private  MySql.Data.MySqlClient.MySqlConnection connection;
         private readonly ILogger<MySqlAccess> logger;
         
         public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
+
+
 
 
         /// <summary>
@@ -37,7 +39,9 @@ namespace DbLib
             // flagStatus errorValues.emptyParameters
             if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
             {
-                flagStatus = errorValues.emptyInputParameters;  
+
+
+                flagStatus = errorValues.EmptyInputParameters;  
                 return;
             }
 
@@ -51,6 +55,14 @@ namespace DbLib
             // Verbindung öffnen 
             flagStatus = openConnection();
 
+        }
+        /// <summary>
+        /// Erstellt eine mockConnection zu testzwecken
+        /// </summary>
+        /// <param name="mockConnection"></param>
+        public void SetConnectionForTesting(MySqlConnection mockConnection)
+        {
+            connection = mockConnection;
         }
 
         // Versucht die Verbindung zur Datenbank über den MySql Connector herzustellen.
@@ -69,63 +81,57 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
+            logger?.LogInformation($"Attempting to open connection to: {this.database}");
 
-            logger?.LogInformation($"Open connection to: {this.database}");
-
-            errorValues returnVal = errorValues.Success;
             try
             {
-                // Prüft im Vorfeld, ob die Verbindung bereits besteht
+                // Verbindung öffnen, falls sie nicht bereits offen ist
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
-                    returnVal = errorValues.Success;
-                    logger?.LogInformation($"Open connection: {connection.State}");
+                    logger?.LogInformation("Connection already open.");
+                    return errorValues.Success;
                 }
 
-                // Prüfe, ob ein Verbindungsstring überhaupt vorhanden ist
-                if (string.IsNullOrEmpty(connection.ConnectionString))
-                {
-                    returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
-                    logger?.LogWarning("Open Connection: leere Verbindungszeichenfolge");
-                }
-
-                // Prüfen, ob der Server erreichbar ist durch Anpingen
-                using (Ping ping = new Ping()){
-
-                    PingReply reply = ping.Send(server);
-
-                    if (reply.Status != IPStatus.Success)
-                        {
-                            returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
-                            logger?.LogWarning("Open Connection: Server nicht erreichbar");
-                        }
-                }
-
-                // Öffne die Verbindung, wenn sie noch nicht offen ist
-                if (connection.State == System.Data.ConnectionState.Closed)
-                {
-                    connection.Open();
-
-                }
-                returnVal = errorValues.Success;
-                logger?.LogInformation("Verbindung erfolgreich geöffnet");
-
+                // Versuche, die Verbindung zu öffnen
+                connection.Open();
+                logger?.LogInformation("Connection opened successfully.");
+                return errorValues.Success;
             }
-            // Allgemeiner/ unbekannter Fehler
-            catch (Exception e)
+            catch (InvalidOperationException ex) // Verbindung ist in einem ungültigen Zustand
             {
-                returnVal = errorValues.UnknownError;
-                logger?.LogWarning("Verbindung konnte nicht aufgebaut werden");
-                
+                logger?.LogError($"Invalid connection state: {ex.Message}");
+                return errorValues.ConnectionInvalid;
             }
-            finally { 
+             catch (MySqlException ex) when (ex.Number == 1045) // Authentifizierungsfehler
+            {
+                logger?.LogError($"Authentication failed: {ex.Message}");
+                return errorValues.AuthenticationFailed;
             }
-            logger?.LogInformation($"Status am Ende von openConnection: {returnVal}");
-            return returnVal;
-
-            // Fehler falls die Verbindung nicht geöffnet werden konnte
+            catch (MySqlException ex) when (ex.Number == 1049) // Datenbank nicht gefunden
+            {
+                logger?.LogError($"Database not found: {ex.Message}");
+                return errorValues.DatabaseNotFound;
+            }
+            catch (MySqlException ex) when (ex.Number == 0) // Server nicht erreichbar
+            {
+                logger?.LogError($"Cannot connect to server: {ex.Message}");
+                return errorValues.ServerConnectionFailed;
+            }
+            catch (MySqlException ex) // Allgemeiner MySQL-Fehler
+            {
+                logger?.LogError($"MySQL error: {ex.Message}");
+                return errorValues.ConnectionQueryError;
+            }
+            catch (Exception ex) // Allgemeine Fehlerbehandlung
+            {
+                logger?.LogError($"An unknown error occurred: {ex.Message}");
+                return errorValues.UnknownError;
+            }
+            finally
+            {
+                logger?.LogInformation("openConnection method completed.");
+            }
         }
-
 
 
         /// <summary>
@@ -140,48 +146,55 @@ namespace DbLib
         /// </returns>
         public errorValues closeConnection()
         {
-             errorValues returnVal = errorValues.Success;
+            logger?.LogInformation("Attempting to close the connection.");
+
             try
             {
-
-                // Es ist keine gültige Verbindung vorhanden welche man schließen könnte
+                // Prüfe, ob die Verbindung existiert
                 if (connection == null)
                 {
-
-                    returnVal = errorValues.ConnectionInvalid; // Fehlercode -1 für ungültige Verbindung
-                    logger.LogWarning("Die Verbindung ist NULL");
+                    throw new InvalidOperationException("Connection is null."); // Werfe eine Ausnahme für ungültige Verbindung
                 }
 
-                // Überprüfen, ob die Verbindung bereits geschlossen ist
-                else if (connection.State == System.Data.ConnectionState.Closed)
+                // Prüfe, ob die Verbindung bereits geschlossen ist
+                if (connection.State == System.Data.ConnectionState.Closed)
                 {
-                    returnVal = errorValues.ConnectionAlreadClosed;
-                    logger.LogInformation("Verbindung geschlossen");
+                    throw new InvalidOperationException("Connection is already closed."); // Werfe eine Ausnahme für bereits geschlossene Verbindung
                 }
-
 
                 // Schließe die Verbindung, wenn sie offen ist
-                else
-                {
-                    connection.Close();
-                    logger.LogInformation("Verbindung geschlossen");
-                }
-                
+                connection.Close();
+                logger?.LogInformation("Connection closed successfully.");
+                return errorValues.Success;
             }
-            // Allgemeiner/ unbekannter Fehler
-            catch (Exception e)
+            catch (InvalidOperationException ex) when (ex.Message.Contains("null"))
             {
-                returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten [{e}]");
+                logger?.LogWarning("Connection is invalid or null.");
+                return errorValues.ConnectionInvalid; // Fehlercode für ungültige Verbindung
             }
-            finally{ 
+            catch (InvalidOperationException ex) when (ex.Message.Contains("closed"))
+            {
+                logger?.LogInformation("Connection is already closed.");
+                return errorValues.ConnectionAlreadyClosed; // Fehlercode für bereits geschlossene Verbindung
             }
-
-            return returnVal;
+            catch (MySqlException ex)
+            {
+                logger?.LogError($"MySQL error occurred while closing the connection: {ex.Message}");
+                return errorValues.ConnectionFailed; // Fehlercode für MySQL-bezogenen Fehler
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError($"An unknown error occurred while closing the connection: {ex.Message}");
+                return errorValues.UnknownError; // Fehlercode für unbekannte Fehler
+            }
+            finally
+            {
+                logger?.LogInformation("closeConnection method completed.");
+            }
         }
 
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         /// <summary>
         /// erhält festgelegte Parameter beim Methodenaufruf, welche zu einem MySql Befehl zusammengeführt werden.
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
@@ -213,7 +226,7 @@ namespace DbLib
                 // SQL-Abfrage-String zusammensetzen
                 if(string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
                 {
-                    returnVal = errorValues.emptyInputParameters;
+                    returnVal = errorValues.EmptyInputParameters;
                     logger.LogWarning("Spalten- oder Tabllenname ist leer");
                 }
                 else
@@ -309,7 +322,7 @@ namespace DbLib
                 // Sicherstellen, dass der tableName und das Set-Statement nicht leer sind (da Pflicht)
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(set))
                 {
-                    returnVal = errorValues.emptyInputParameters;
+                    returnVal = errorValues.EmptyInputParameters;
                     logger.LogWarning("tableName oder set-Wert ist leer");
                 }
 
@@ -398,7 +411,7 @@ namespace DbLib
                 // Sicherstellen, dass der tableName und values nicht leer sind
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(values))
                 {
-                    returnVal = errorValues.emptyInputParameters;
+                    returnVal = errorValues.EmptyInputParameters;
                     logger.LogWarning("tableName oder values-Wert leer");
 
                 }
@@ -476,7 +489,7 @@ namespace DbLib
                 // Sicherstellen, dass der tableName und die whereCondition nicht leer sind
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(whereCondition))
                 {
-                    returnVal = errorValues.emptyInputParameters;
+                    returnVal = errorValues.EmptyInputParameters;
                     logger.LogWarning($"tableName: [{tableName}] oder WHERE condition: [{whereCondition}] leer");
 
                                     }
