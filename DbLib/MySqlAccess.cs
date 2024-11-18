@@ -47,7 +47,7 @@ namespace DbLib
             this.uid = uid;
             this.password = password;
             connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
-            slogger = _logger ?? throw new ArgumentNullException(nameof(_logger));
+            logger = _logger ?? throw new ArgumentNullException(nameof(_logger));
 
             // Verbindung öffnen 
             flagStatus = openConnection();
