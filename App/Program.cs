@@ -9,7 +9,7 @@ class Program
         string server = Environment.GetEnvironmentVariable("MYSQL_SERVER") ?? "localhost";
         string database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "testprotocol";
         string user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
-        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "password";
+        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
 
         // Überprüfen, ob die Variablen korrekt geladen wurden
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(database) ||

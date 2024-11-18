@@ -210,89 +210,97 @@ namespace DbLib
         /// </returns>
         public errorValues select(string column, string tableName, string whereCondition = "", string orderBy = "")
         {
-            errorValues returnVal = errorValues.Success;    
+            errorValues returnVal = errorValues.Success;
             string querySelect = "";
             logger.LogInformation("SELECT Methode gestartet");
+
             try
             {
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
+                // Sicherstellen, dass Eingabeparameter vorhanden sind
+                if (string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
+                {
+                    throw new ArgumentException("Spalten- oder Tabellenname ist leer.");
+                }
+
+                // Verbindung öffnen, falls sie geschlossen ist
                 if (connection.State == ConnectionState.Closed)
                 {
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet.");
                     openConnection();
-                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                 }
 
                 // SQL-Abfrage-String zusammensetzen
-                if(string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
-                {
-                    returnVal = errorValues.EmptyInputParameters;
-                    logger.LogWarning("Spalten- oder Tabllenname ist leer");
-                }
-                else
-                {
-                    querySelect = $" SELECT {column} FROM {tableName}";
-                    logger.LogDebug($"column: [{column}] und tableName: [{tableName}] in Sql Statement eingesetzt");
+                querySelect = $"SELECT {column} FROM {tableName}";
+                logger.LogDebug($"column: [{column}] und tableName: [{tableName}] in SQL-Statement eingesetzt");
 
-                }
-
-                // WHERE-Bedingung hinzufügen falls vorhanden
+                // WHERE-Bedingung hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     querySelect += $" WHERE {whereCondition}";
                     logger.LogDebug($"WHERE Condition hinzugefügt [{whereCondition}]");
                 }
 
-                // ORDER BY hinzufügen falls vorhanden
+                // ORDER BY hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(orderBy))
                 {
                     querySelect += $" ORDER BY {orderBy}";
-                    logger.LogDebug($"ORDER BY hinzugefügt: [{orderBy}] ");
-
+                    logger.LogDebug($"ORDER BY hinzugefügt: [{orderBy}]");
                 }
 
-                // MySqlCommand erstellen und Abfrage ausführen nur wenn es eine Query gibt
-                if (!string.IsNullOrEmpty(querySelect))
+                // MySqlCommand erstellen und Abfrage ausführen
+                DataTable dt = new DataTable();
+                using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
+                    logger.LogDebug($"MySqlCommand mit [{querySelect}] wird an MySqlDataReader übergeben.");
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        logger.LogDebug($"MySqlCommand mit [{querySelect}] wird an MySqlDataReader übergeben");
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            logger.LogInformation($"der Befehl wurde ausgelesen und wird in den DataTable geladen");
-                            // Lade die Spaltenstruktur des DataReaders in den DataTable
-                            dt.Load(reader);
-                        }
+                        logger.LogInformation("Der Befehl wurde ausgelesen und wird in den DataTable geladen.");
+                        dt.Load(reader);
                     }
                 }
-                // DataTable hat keinen Inhalt
+
+                // Prüfen, ob der DataTable leer ist
                 if (dt.Rows.Count == 0)
                 {
-                    returnVal = errorValues.NoData;
-                    logger.LogWarning("Es gibt keine Daten aus der Select-Anfrage");
+                    throw new InvalidOperationException("Es gibt keine Daten aus der SELECT-Anfrage.");
                 }
 
-                logger.LogInformation("Wird über Data Table ausgegeben");
+                // DataTable ausgeben (optional)
+                logger.LogInformation("Wird über Data Table ausgegeben:");
                 foreach (DataRow row in dt.Rows)
                 {
                     foreach (DataColumn col in dt.Columns)
                     {
-                        Console.Write($"{row[col]} | ");  // Gibt den Wert der aktuellen Zelle aus
+                        Console.Write($"{row[col]} | ");
                     }
-                    Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
+                    Console.WriteLine();
                 }
-
+            }
+            catch (ArgumentException e)
+            {
+                returnVal = errorValues.EmptyInputParameters;
+                logger.LogWarning($"Fehlerhafte Eingabeparameter: {e.Message}");
+            }
+            catch (InvalidOperationException e)
+            {
+                returnVal = errorValues.NoData;
+                logger.LogWarning($"Keine Daten gefunden: {e.Message}");
+            }
+            catch (MySqlException e)
+            {
+                returnVal = errorValues.QueryError;
+                logger.LogError($"Datenbankfehler: {e.Message}");
             }
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten[{e}]");
+                logger.LogError($"Unbekannter Fehler: {e.Message}");
             }
-
             finally
             {
+                logger.LogDebug($"Status von SELECT vor Beenden: {returnVal}");
             }
-            logger.LogDebug($"Status von SELECT vor beenden: {returnVal}");
+
             return returnVal;
         }
 
@@ -312,6 +320,7 @@ namespace DbLib
         /// -1 = tableName oder set Wert leer
         /// -2 = anderer Fehler
         /// </returns>
+
         public errorValues update(string tableName, string set, string whereCondition = "", string join = "")
         {
             logger.LogInformation("UPDATE Methode gestartet");
