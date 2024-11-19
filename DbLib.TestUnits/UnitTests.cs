@@ -4,7 +4,7 @@ using MySql.Data.MySqlClient;
 using System.Data;
 using Mysqlx.Expect;
 
-namespace DbLib.UnitTests
+namespace DbLib.TestUnits
 {
 
     // Testaufbau (AAA)
@@ -14,12 +14,12 @@ namespace DbLib.UnitTests
     // Arrange
 
 
-    public class MySqlAccessTests
+    public class UnitTests
     {
 
         private readonly string _password;
 
-        public MySqlAccessTests()
+        public UnitTests()
         {
             // Passwort aus Umgebungsvariable holen
             _password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
