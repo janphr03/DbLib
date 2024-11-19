@@ -1,15 +1,16 @@
 ﻿using DbLib;
 using Microsoft.Extensions.Logging;
+using MySql.Data.MySqlClient;
 using Serilog;
 
 class Program
 {
     static void Main(string[] args)
     {
-        string server = Environment.GetEnvironmentVariable("MYSQL_SERVER") ?? "localhost";
-        string database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "testprotocol";
-        string user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
-        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
+        string server = "localhost";
+        string database = "testprotocol";
+        string user = "root";
+        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Passwort ist als Systemvariable hinterlegt
 
         // Überprüfen, ob die Variablen korrekt geladen wurden
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(database) ||
@@ -34,10 +35,14 @@ class Program
         // Logger für MySqlAccess erstellen
         ILogger<MySqlAccess> logger = loggerFactory.CreateLogger<MySqlAccess>();
 
+        // Erstelle die MySQL-Verbindung
+        string connectionString = $"Server={server};Database={database};Uid={user};Pwd={password};";
+         var connection = new MySqlConnection(connectionString);
+
         try
         {
-            // MySqlAccess-Instanz mit den aus Umgebungsvariablen geladenen Werten erstellen
-            IConnector mySqlAccess = new MySqlAccess(database, server, user, password, logger);
+            // MySqlAccess-Instanz mit der Verbindung erstellen
+            IConnector mySqlAccess = new MySqlAccess(connection, logger);
 
             // Beispielaufruf für eine Methode
             var status = mySqlAccess.select("*", "tester", "", "");
@@ -56,7 +61,8 @@ class Program
             logger.LogError("Fehler bei der MySQL-Verbindung oder Abfrage: {Message}", ex.Message);
         }
 
-        // Beende das Logging (optional, wird normalerweise beim Programmende automatisch aufgerufen)
+        // Beende das Logging
         Log.CloseAndFlush();
     }
 }
+

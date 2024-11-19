@@ -1,12 +1,11 @@
 using System;
 using System.Data;
-using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace DbLib
 {
-    public class MySqlAccess : IConnector
+    public class MySqlAccess : IConnector 
     {
 
         private string database;
@@ -14,9 +13,9 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private  MySql.Data.MySqlClient.MySqlConnection connection;
         private readonly ILogger<MySqlAccess> logger;
-        
+        private readonly MySqlConnection connection;
+
         public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
 
 
@@ -26,34 +25,25 @@ namespace DbLib
         /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
         /// </summary>
         /// 
-        /// <param name="database"></param>
-        /// <param name="server"></param>
-        /// <param name="uid"></param>
-        /// <param name="password"></param>
+        /// <param name="connection"></param>
         /// <param name="logger"></param>
         /// 
         /// <flagStatus>
         /// - Success: Verbindung erfolgreich hergestellt.
         /// - EmptyInputParameters: Einer der Pflichtparameter fehlt.
         /// </flagStatus>
-        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
+        public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess> logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus errorValues.emptyParameters
-            if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
+            if (connection == null)
             {
-
-
                 flagStatus = errorValues.EmptyInputParameters;  
                 return;
             }
 
-            // Verbindung mit den Parametern herstellen
-            this.database = database;
-            this.server = server;
-            this.uid = uid;
-            this.password = password;
-            connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
+            // Verbindung herstellen
+            this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             // Verbindung öffnen 
             flagStatus = openConnection();
