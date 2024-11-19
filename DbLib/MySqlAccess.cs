@@ -97,7 +97,7 @@ namespace DbLib
                 logger?.LogError($"Database not found: {ex.Message}");
                 return errorValues.DatabaseNotFound;
             }
-            catch (MySqlException ex) when (ex.Number == 0) // Server nicht erreichbar
+            catch (MySqlException ex) when (ex.Number == 1042) // Server nicht erreichbar
             {
                 logger?.LogError($"Cannot connect to server: {ex.Message}");
                 return errorValues.ServerConnectionFailed;
