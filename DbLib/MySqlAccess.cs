@@ -76,11 +76,14 @@ namespace DbLib
                     logger?.LogInformation("Connection already open.");
                     return errorValues.Success;
                 }
+                else
+                {
+                    // Versuche, die Verbindung zu öffnen
+                    connection.Open();
+                    logger?.LogInformation("Connection opened successfully.");
+                    return errorValues.Success;
+                }
 
-                // Versuche, die Verbindung zu öffnen
-                connection.Open();
-                logger?.LogInformation("Connection opened successfully.");
-                return errorValues.Success;
             }
             catch (InvalidOperationException ex) // Verbindung ist in einem ungültigen Zustand
             {

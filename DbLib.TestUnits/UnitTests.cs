@@ -195,7 +195,6 @@ namespace DbLib.TestUnits
             Assert.Equal(errorValues.DatabaseNotFound, result); // Datenbank nicht gefunden wird erwartet
         }
 
-
         [Fact]
         public void OpenConnection_ReturnsServerConnectionFailed_WhenServerIsUnavailable()
         {
@@ -218,6 +217,30 @@ namespace DbLib.TestUnits
             Assert.Equal(errorValues.ServerConnectionFailed, result); // Server nicht erreichbar wird erwartet
         }
 
+
+        // Edge Cases Test
+        [Fact]
+        public void OpenConnection_ReturnsSuccess_WhenConnectionIsAlreadyOpen()
+        {
+            // Arrange
+            string database = "testprotocol";
+            string server = "localhost"; // Gültiger Server
+            string uid = "root"; // Gültiger Benutzername
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Gültiges Passwort
+
+            string connectionString = $"Server={server};Database={database};Uid={uid};Pwd={password};";
+            using var connection = new MySqlConnection(connectionString);
+            var mockLogger = new Mock<ILogger<MySqlAccess>>();
+
+            // Simuliere, dass die Verbindung bereits geöffnet ist (Wird im Konstruktor von MySqlAccess schon aufgebaut)
+            var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
+
+            // Act
+            var result = mySqlAccess.openConnection();
+
+            // Assert
+            Assert.Equal(errorValues.Success, result); // Es wird erwartet, dass Success zurückgegeben wird
+        }
 
 
 
