@@ -90,6 +90,8 @@ namespace DbLib
                 logger?.LogError($"Invalid connection state: {ex.Message}");
                 return errorValues.ConnectionInvalid;
             }
+
+
              catch (MySqlException ex) when (ex.Number == 1045) // Authentifizierungsfehler
             {
                 logger?.LogError($"Authentication failed: {ex.Message}");
@@ -110,6 +112,8 @@ namespace DbLib
                 logger?.LogError($"MySQL error: {ex.Message}");
                 return errorValues.ConnectionQueryError;
             }
+
+
             catch (Exception ex) // Allgemeine Fehlerbehandlung
             {
                 logger?.LogError($"An unknown error occurred: {ex.Message}");
