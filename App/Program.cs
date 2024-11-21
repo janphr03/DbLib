@@ -10,7 +10,7 @@ class Program
         string server = "localhost";
         string database = "testprotocol";
         string user = "root";
-        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Passwort ist als Systemvariable hinterlegt
+        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Passwort ist als Umgebungsvariable hinterlegt
 
         // Überprüfen, ob die Variablen korrekt geladen wurden
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(database) ||

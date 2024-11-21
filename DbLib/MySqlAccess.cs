@@ -108,7 +108,7 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
-            logger?.LogInformation($"Attempting to open connection to: {this.database}");
+            logger?.LogInformation($"Attempting to open connection to: {connection.Database}");
 
             try
             {
