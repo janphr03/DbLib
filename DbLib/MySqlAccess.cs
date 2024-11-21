@@ -13,12 +13,50 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private readonly ILogger<MySqlAccess> logger;
+        private readonly ILogger<MySqlAccess>? logger;
         private readonly MySqlConnection connection;
 
         public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
 
 
+        /// <summary>
+        /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
+        /// </summary>
+        
+        /// <param name="server"></param>
+        /// <param name="database"></param>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <param name="logger"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public MySqlAccess(string server, string database, string username, string password, ILogger<MySqlAccess>? logger)
+        {
+            // Überprüfen, ob die Verbindungsparameter gültig sind
+            if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(database) ||
+                string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                flagStatus = errorValues.EmptyInputParameters;
+                return;
+            }
+
+            // Logger initialisieren
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            try
+            {
+                // Verbindung erstellen
+                var connectionString = $"Server={server};Database={database};User ID={username};Password={password};";
+                connection = new MySqlConnection(connectionString);
+
+                // Verbindung öffnen
+                flagStatus = openConnection();
+            }
+            catch (MySqlException ex)
+            {
+                logger.LogError(ex, "Fehler bei der Erstellung der MySQL-Verbindung.");
+                flagStatus = errorValues.UnknownError;
+            }
+        }
 
 
         /// <summary>
@@ -32,7 +70,11 @@ namespace DbLib
         /// - Success: Verbindung erfolgreich hergestellt.
         /// - EmptyInputParameters: Einer der Pflichtparameter fehlt.
         /// </flagStatus>
-        public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess> logger)
+
+
+
+        // @override
+        public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess>? logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus errorValues.emptyParameters
@@ -431,7 +473,6 @@ namespace DbLib
             logger.LogInformation("INSERT gestartet");
             errorValues returnVal = errorValues.Success;
             string queryInsert = "";
-
             try
             {
                 // Überprüfen, ob tableName und values gültig sind

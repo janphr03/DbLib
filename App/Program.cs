@@ -37,12 +37,13 @@ class Program
 
         // Erstelle die MySQL-Verbindung
         string connectionString = $"Server={server};Database={database};Uid={user};Pwd={password};";
-         var connection = new MySqlConnection(connectionString);
+        // var connection = new MySqlConnection(connectionString);
+
 
         try
         {
             // MySqlAccess-Instanz mit der Verbindung erstellen
-            IConnector mySqlAccess = new MySqlAccess(connection, logger);
+            IConnector mySqlAccess = new MySqlAccess("localhost", "testprotocol", "root", "password", logger);
 
             // Beispielaufruf für eine Methode
             var status = mySqlAccess.select("*", "tester", "", "");

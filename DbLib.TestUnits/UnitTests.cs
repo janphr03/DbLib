@@ -1,6 +1,7 @@
 ﻿using Moq;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using System.Data;
 
 namespace DbLib.TestUnits
 {
@@ -219,6 +220,7 @@ namespace DbLib.TestUnits
 
 
         // Edge Cases Test
+
         [Fact]
         public void OpenConnection_ReturnsSuccess_WhenConnectionIsAlreadyOpen()
         {
@@ -276,14 +278,124 @@ namespace DbLib.TestUnits
 
         // negative Test
 
+        [Fact]
+        public void CloseConnection_ReturnsConnectionAlreadyClosed_WhenConnection_IsAlreadyClosed()
+        {
+            // Arrange
+            string database = "testprotocol";
+            string server = "localhost"; // Gültiger Server
+            string uid = "root"; // Gültiger Benutzername
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Gültiges Passwort
+
+            string connectionString = $"Server={server};Database={database};Uid={uid};Pwd={password};";
+            using var connection = new MySqlConnection(connectionString);
+            var mockLogger = new Mock<ILogger<MySqlAccess>>();
+
+            // Verbindung wird geschlossen und danach nochmal geschlossen 
+            var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
+
+            mySqlAccess.closeConnection();
+
+            // Act
+            var result = mySqlAccess.closeConnection();
+
+            // Assert
+            Assert.Equal(errorValues.ConnectionAlreadyClosed, result); // Es wird erwartet, dass ConnectionAlreadyClosed zurückgegeben wird
+        }
+
+        [Fact]
+        public void CloseConnection_ReturnsConnectionInvalid_WhenConnectionIsNull()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<MySqlAccess>>();
+            MySqlConnection? nullConnection = null; // Verbindung ist null
+
+            var mySqlAccess = new MySqlAccess(nullConnection!, mockLogger.Object); // Konstruktor setzt flagStatus auf EmptyInputParameters
+
+            // Act
+            var result = mySqlAccess.closeConnection();
+
+            // Assert
+            Assert.Equal(errorValues.ConnectionInvalid, result);
+        }
+
+        [Fact]
+        public void CloseConnection_ReturnsConnectionFailed_WhenMySqlExceptionOccurs()
+        {
+            // Arrange
+            string database = "testprotocol";
+            string server = "localhost";
+            string uid = "root";
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
+
+            string connectionString = $"Server={server};Database={database};Uid={uid};Pwd={password};";
+            using var connection = new MySqlConnection(connectionString);
+
+            var mockLogger = new Mock<ILogger<MySqlAccess>>();
+            var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
+
+            // Simuliere einen Fehler beim Schließen der Verbindung
+            connection.Dispose(); // Verbindung ungültig machen
+
+            // Act
+            var result = mySqlAccess.closeConnection();
+
+            // Assert
+            Assert.Equal(errorValues.ConnectionAlreadyClosed, result);
+        }
 
 
-        // EdgeCase Test
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+        //                             select 
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
 
+        // negative Tests
+
+        [Fact]
+        public void Select_ThrowsArgumentException_WhenInputIsTooLarge()
+        {
+            // Arrange
+            string database = "testprotocol";
+            string server = "localhost"; // Gültiger Server
+            string uid = "root"; // Gültiger Benutzername
+            string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Gültiges Passwort
+
+            string connectionString = $"Server={server};Database={database};Uid={uid};Pwd={password};";
+            var connection = new MySqlConnection(connectionString);
+            var mockLogger = new Mock<ILogger<MySqlAccess>>();
+
+            // Simuliere eine gültige Verbindung
+            var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
+
+            string longColumnName = new string('x', ); // Simuliere einen sehr langen Spaltennamen
+            string tableName = "tester";
+
+            // Act
+            var result = mySqlAccess.select(longColumnName, tableName);
+
+            // Assert
+            Assert.Equal(errorValues.QueryError, result);
+        
+        
+        
+        }
+
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+        //                             update 
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+        //                             insert 
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
+        //                             delete 
+        //-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
     }
-
 
 }
 
