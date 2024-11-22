@@ -1,12 +1,11 @@
 using System;
 using System.Data;
-using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace DbLib
 {
-    public class MySqlAccess : IConnector
+    public class MySqlAccess : IConnector 
     {
 
         private string database;
@@ -14,46 +13,79 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private  MySql.Data.MySqlClient.MySqlConnection connection;
-        private readonly ILogger<MySqlAccess> logger;
-        
+        private readonly ILogger<MySqlAccess>? logger;
+        private readonly MySqlConnection connection;
+
         public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
 
 
+        /// <summary>
+        /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
+        /// </summary>
+        
+        /// <param name="server"></param>
+        /// <param name="database"></param>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <param name="logger"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public MySqlAccess(string server, string database, string username, string password, ILogger<MySqlAccess>? logger)
+        {
+            // Überprüfen, ob die Verbindungsparameter gültig sind
+            if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(database) ||
+                string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                flagStatus = errorValues.EmptyInputParameters;
+                return;
+            }
+
+            // Logger initialisieren
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            try
+            {
+                // Verbindung erstellen
+                var connectionString = $"Server={server};Database={database};User ID={username};Password={password};";
+                connection = new MySqlConnection(connectionString);
+
+                // Verbindung öffnen
+                flagStatus = openConnection();
+            }
+            catch (MySqlException ex)
+            {
+                logger.LogError(ex, "Fehler bei der Erstellung der MySQL-Verbindung.");
+                flagStatus = errorValues.UnknownError;
+            }
+        }
 
 
         /// <summary>
         /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
         /// </summary>
         /// 
-        /// <param name="database"></param>
-        /// <param name="server"></param>
-        /// <param name="uid"></param>
-        /// <param name="password"></param>
+        /// <param name="connection"></param>
         /// <param name="logger"></param>
         /// 
         /// <flagStatus>
         /// - Success: Verbindung erfolgreich hergestellt.
         /// - EmptyInputParameters: Einer der Pflichtparameter fehlt.
         /// </flagStatus>
-        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess>logger)
+
+
+
+        // @override
+        public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess>? logger)
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus errorValues.emptyParameters
-            if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
+            if (connection == null)
             {
-
-
                 flagStatus = errorValues.EmptyInputParameters;  
                 return;
             }
 
-            // Verbindung mit den Parametern herstellen
-            this.database = database;
-            this.server = server;
-            this.uid = uid;
-            this.password = password;
-            connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
+            // Verbindung herstellen
+            this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             // Verbindung öffnen 
             flagStatus = openConnection();
@@ -76,7 +108,7 @@ namespace DbLib
         /// </returns>
         public errorValues openConnection()
         {
-            logger?.LogInformation($"Attempting to open connection to: {this.database}");
+            logger?.LogInformation($"Attempting to open connection to: {connection.Database}");
 
             try
             {
@@ -86,17 +118,22 @@ namespace DbLib
                     logger?.LogInformation("Connection already open.");
                     return errorValues.Success;
                 }
+                else
+                {
+                    // Versuche, die Verbindung zu öffnen
+                    connection.Open();
+                    logger?.LogInformation("Connection opened successfully.");
+                    return errorValues.Success;
+                }
 
-                // Versuche, die Verbindung zu öffnen
-                connection.Open();
-                logger?.LogInformation("Connection opened successfully.");
-                return errorValues.Success;
             }
             catch (InvalidOperationException ex) // Verbindung ist in einem ungültigen Zustand
             {
                 logger?.LogError($"Invalid connection state: {ex.Message}");
                 return errorValues.ConnectionInvalid;
             }
+
+
              catch (MySqlException ex) when (ex.Number == 1045) // Authentifizierungsfehler
             {
                 logger?.LogError($"Authentication failed: {ex.Message}");
@@ -107,7 +144,7 @@ namespace DbLib
                 logger?.LogError($"Database not found: {ex.Message}");
                 return errorValues.DatabaseNotFound;
             }
-            catch (MySqlException ex) when (ex.Number == 0) // Server nicht erreichbar
+            catch (MySqlException ex) when (ex.Number == 1042) // Server nicht erreichbar
             {
                 logger?.LogError($"Cannot connect to server: {ex.Message}");
                 return errorValues.ServerConnectionFailed;
@@ -117,6 +154,8 @@ namespace DbLib
                 logger?.LogError($"MySQL error: {ex.Message}");
                 return errorValues.ConnectionQueryError;
             }
+
+
             catch (Exception ex) // Allgemeine Fehlerbehandlung
             {
                 logger?.LogError($"An unknown error occurred: {ex.Message}");
@@ -434,7 +473,6 @@ namespace DbLib
             logger.LogInformation("INSERT gestartet");
             errorValues returnVal = errorValues.Success;
             string queryInsert = "";
-
             try
             {
                 // Überprüfen, ob tableName und values gültig sind
