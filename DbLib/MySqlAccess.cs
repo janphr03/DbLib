@@ -1,12 +1,11 @@
 using System;
 using System.Data;
-using System.Net.NetworkInformation;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace DbLib
 {
-    public class MySqlAccess : IConnector
+    public class MySqlAccess : IConnector 
     {
 
         private string database;
@@ -14,39 +13,82 @@ namespace DbLib
         private string uid;
         private string password;
 
-        private MySql.Data.MySqlClient.MySqlConnection connection;
-        private readonly ILogger<MySqlAccess> logger;
+        private readonly ILogger<MySqlAccess>? logger;
+        private readonly MySqlConnection connection;
 
-        public errorValues flagStatus = 0;  // Verbindungsstatus
+        public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
+
+
+
+        /// <summary>
+        /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
+        /// </summary>
+        
+        /// <param name="server"></param>
+        /// <param name="database"></param>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <param name="logger"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public MySqlAccess(string server, string database, string username, string password, ILogger<MySqlAccess>? logger)
+        {
+            // Überprüfen, ob die Verbindungsparameter gültig sind
+            if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(database) ||
+                string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                flagStatus = errorValues.EmptyInputParameters;
+                return;
+            }
+
+            // Logger initialisieren
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            try
+            {
+                // Verbindung erstellen
+                var connectionString = $"Server={server};Database={database};User ID={username};Password={password};";
+                connection = new MySqlConnection(connectionString);
+
+                // Verbindung öffnen
+                flagStatus = openConnection();
+            }
+            catch (MySqlException ex)
+            {
+                logger.LogError(ex, "Fehler bei der Erstellung der MySQL-Verbindung.");
+                flagStatus = errorValues.UnknownError;
+            }
+        }
 
 
         /// <summary>
         /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
         /// </summary>
         /// 
-        /// <param name="database"></param>
-        /// <param name="server"></param>
-        /// <param name="uid"></param>
-        /// <param name="password"></param>
+
+        /// <param name="connection"></param>
+        /// <param name="logger"></param>
         /// 
-        /// flagStatus = 0 -> Die Verbindung konnte hergestellt werden
-        /// flagStatus != 0 -> Beim Herstellen der Verbindung muss ein Fehler aufgetreten sein und das Objekt wurde fehlerhaft instanziiert
-        public MySqlAccess(string database, string server, string uid, string password, ILogger<MySqlAccess> logger)
+        /// <flagStatus>
+        /// - Success: Verbindung erfolgreich hergestellt.
+        /// - EmptyInputParameters: Einer der Pflichtparameter fehlt.
+        /// </flagStatus>
+
+
+
+        // @override
+        public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess>? logger)
+
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
-            // flagStatus != 0 für ungültige Verbindung
-            if (string.IsNullOrEmpty(database) || string.IsNullOrEmpty(server) || string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(password))
+            // flagStatus errorValues.emptyParameters
+            if (connection == null)
             {
-                flagStatus = errorValues.Success;
+                flagStatus = errorValues.EmptyInputParameters;  
                 return;
             }
 
-            // Verbindung mit den Parametern herstellen
-            this.database = database;
-            this.server = server;
-            this.uid = uid;
-            this.password = password;
-            connection = new MySql.Data.MySqlClient.MySqlConnection($"Server={server};Database={database};Uid={uid};Pwd={password};");
+            // Verbindung herstellen
+            this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Verbindung öffnen 
@@ -54,79 +96,82 @@ namespace DbLib
 
         }
 
-        // Versucht die Verbindung zur Datenbank über den MySql Connector herzustellen.
-        // Falls die Verbindung schon besteht, wird der Prozess frühzeitig beendet.
-
         /// <summary> 
         /// Versucht die Verbindung zur Datenbank über den MySql Connector herzustellen.
         /// Falls die Verbindung schon besteht, wird der Prozess frühzeitig beendet.
         /// </summary>
         /// 
         /// <returns>
-        ///  0 = offen
-        /// -1 = keine Verbindungsinformationen erhalten
-        /// -2 = Server nicht erreichbar
-        /// -3 = anderer Fehler
+        /// - Success: Verbindung wurde erfolgreich geöffnet.
+        /// - ConnectionInvalid: Die Verbindung ist in einem ungültigen Zustand.
+        /// - AuthenticationFailed: Authentifizierungsfehler (z. B. falscher Benutzername oder Passwort).
+        /// - DatabaseNotFound: Die angegebene Datenbank existiert nicht.
+        /// - ServerConnectionFailed: Der Server konnte nicht erreicht werden.
+        /// - ConnectionQueryError: Ein MySQL-Fehler ist während der Verbindungsherstellung aufgetreten.
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
         public errorValues openConnection()
         {
-            logger.LogInformation($"Open connection to: {this.database}");
-            errorValues returnVal = errorValues.Success;
+            logger?.LogInformation($"Attempting to open connection to: {connection.Database}");
+
             try
             {
-                // Prüft im Vorfeld, ob die Verbindung bereits besteht
+                // Verbindung öffnen, falls sie nicht bereits offen ist
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
-                    returnVal = errorValues.Success;
-                    logger.LogInformation($"Open connection: {connection.State}");
+                    logger?.LogInformation("Connection already open.");
+                    return errorValues.Success;
                 }
-
-                // Prüfe, ob ein Verbindungsstring überhaupt vorhanden ist
-                if (string.IsNullOrEmpty(connection.ConnectionString))
+                else
                 {
-                    returnVal = errorValues.ConnectionQueryError; // Fehlercode -1 für ungültige Verbindungszeichenfolge
-                    logger.LogWarning("Open Connection: leere Verbindungszeichenfolge");
-                }
-
-                // Prüfen, ob der Server erreichbar ist durch Anpingen
-                using (Ping ping = new Ping())
-                {
-
-                    PingReply reply = ping.Send(server);
-
-                    if (reply.Status != IPStatus.Success)
-                    {
-                        returnVal = errorValues.ServerConnectionFailed; // Fehlercode -2 für nicht erreichbaren Server
-                        logger.LogWarning("Open Connection: Server nicht erreichbar");
-                    }
-                }
-
-                // Öffne die Verbindung, wenn sie noch nicht offen ist
-                if (connection.State == System.Data.ConnectionState.Closed)
-                {
+                    // Versuche, die Verbindung zu öffnen
                     connection.Open();
+                    logger?.LogInformation("Connection opened successfully.");
+                    return errorValues.Success;
 
                 }
-                returnVal = errorValues.Success;
-                logger.LogInformation("Verbindung erfolgreich geöffnet");
 
             }
-            // Allgemeiner/ unbekannter Fehler
-            catch (Exception e)
+            catch (InvalidOperationException ex) // Verbindung ist in einem ungültigen Zustand
             {
-                returnVal = errorValues.UnknownError;
-                logger.LogWarning("Verbindung konnte nicht aufgebaut werden");
+                logger?.LogError($"Invalid connection state: {ex.Message}");
+                return errorValues.ConnectionInvalid;
+            }
 
+
+             catch (MySqlException ex) when (ex.Number == 1045) // Authentifizierungsfehler
+            {
+                logger?.LogError($"Authentication failed: {ex.Message}");
+                return errorValues.AuthenticationFailed;
+            }
+            catch (MySqlException ex) when (ex.Number == 1049) // Datenbank nicht gefunden
+            {
+                logger?.LogError($"Database not found: {ex.Message}");
+                return errorValues.DatabaseNotFound;
+            }
+            catch (MySqlException ex) when (ex.Number == 1042) // Server nicht erreichbar
+            {
+                logger?.LogError($"Cannot connect to server: {ex.Message}");
+                return errorValues.ServerConnectionFailed;
+            }
+            catch (MySqlException ex) // Allgemeiner MySQL-Fehler
+            {
+                logger?.LogError($"MySQL error: {ex.Message}");
+                return errorValues.ConnectionQueryError;
+
+            }
+
+
+            catch (Exception ex) // Allgemeine Fehlerbehandlung
+            {
+                logger?.LogError($"An unknown error occurred: {ex.Message}");
+                return errorValues.UnknownError;
             }
             finally
             {
+                logger?.LogInformation("openConnection method completed.");
             }
-            logger.LogInformation($"Status am Ende von openConnection: {returnVal}");
-            return returnVal;
-
-            // Fehler falls die Verbindung nicht geöffnet werden konnte
         }
-
 
 
         /// <summary>
@@ -134,52 +179,64 @@ namespace DbLib
         /// </summary>
         /// 
         /// <returns>
-        ///  0 = geschlossen
-        /// -1 = keine Verbindungsinformationen erhalten
-        /// -2 = Verbindung schon geschlossen
-        /// -3 = anderer Fehler ist aufgetreten
+        /// Schließt die bestehende Datenbankverbindung.
+        /// Rückgabewerte:
+        /// - Success: Verbindung wurde erfolgreich geschlossen.
+        /// - ConnectionInvalid: Die Verbindung ist ungültig oder null.
+        /// - ConnectionAlreadyClosed: Die Verbindung war bereits geschlossen.
+        /// - ConnectionFailed: Ein MySQL-bezogener Fehler ist beim Schließen der Verbindung aufgetreten.
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
         public errorValues closeConnection()
         {
-            errorValues returnVal = errorValues.Success;
+            logger?.LogInformation("Attempting to close the connection.");
+
+
             try
             {
-
-                // Es ist keine gültige Verbindung vorhanden welche man schließen könnte
+                // Prüfe, ob die Verbindung existiert
                 if (connection == null)
                 {
-
-                    returnVal = errorValues.ConnectionInvalid; // Fehlercode -1 für ungültige Verbindung
-                    logger.LogWarning("Die Verbindung ist NULL");
+                    throw new InvalidOperationException("Connection is null."); // Werfe eine Ausnahme für ungültige Verbindung
                 }
 
-                // Überprüfen, ob die Verbindung bereits geschlossen ist
-                else if (connection.State == System.Data.ConnectionState.Closed)
+                // Prüfe, ob die Verbindung bereits geschlossen ist
+                if (connection.State == System.Data.ConnectionState.Closed)
                 {
-                    returnVal = errorValues.ConnectionAlreadClosed;
-                    logger.LogInformation("Verbindung geschlossen");
+                    throw new InvalidOperationException("Connection is already closed."); // Werfe eine Ausnahme für bereits geschlossene Verbindung
                 }
-
 
                 // Schließe die Verbindung, wenn sie offen ist
-                else
-                {
-                    connection.Close();
-                    logger.LogInformation("Verbindung geschlossen");
-                }
+                connection.Close();
+                logger?.LogInformation("Connection closed successfully.");
+                return errorValues.Success;
 
             }
-            // Allgemeiner/ unbekannter Fehler
-            catch (Exception e)
+            catch (InvalidOperationException ex) when (ex.Message.Contains("null"))
             {
-                returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten [{e}]");
+                logger?.LogWarning("Connection is invalid or null.");
+                return errorValues.ConnectionInvalid; // Fehlercode für ungültige Verbindung
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("closed"))
+            {
+                logger?.LogInformation("Connection is already closed.");
+                return errorValues.ConnectionAlreadyClosed; // Fehlercode für bereits geschlossene Verbindung
+            }
+            catch (MySqlException ex)
+            {
+                logger?.LogError($"MySQL error occurred while closing the connection: {ex.Message}");
+                return errorValues.ConnectionFailed; // Fehlercode für MySQL-bezogenen Fehler
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError($"An unknown error occurred while closing the connection: {ex.Message}");
+                return errorValues.UnknownError; // Fehlercode für unbekannte Fehler
             }
             finally
             {
-            }
+                logger?.LogInformation("closeConnection method completed.");
 
-            return returnVal;
+            }
         }
 
 
@@ -196,93 +253,106 @@ namespace DbLib
         /// <param name="orderBy"></param>
         /// 
         /// <returns>
-        /// Es wird der DataTable als Objekt zurückgegeben
+        /// - Success: Abfrage erfolgreich, Daten wurden gefunden und verarbeitet.
+        /// - NoData: Abfrage erfolgreich, aber es wurden keine Datensätze gefunden.
+        /// - EmptyInputParameters: Einer der Pflichtparameter fehlt (column oder tableName).
+        /// - QueryError: Fehler bei der SQL-Abfrage (z. B. Syntaxfehler, Datenbankprobleme).
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
         public errorValues select(string column, string tableName, string whereCondition = "", string orderBy = "")
         {
             errorValues returnVal = errorValues.Success;
             string querySelect = "";
             logger.LogInformation("SELECT Methode gestartet");
+
             try
             {
-                DataTable dt = new DataTable();
-                // Sicherstellen, dass die Verbindung geöffnet ist
-                if (connection.State == ConnectionState.Closed)
+                // Sicherstellen, dass Eingabeparameter vorhanden sind
+                if (string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
                 {
+                    throw new ArgumentException("Spalten- oder Tabellenname ist leer.");
+                }
+
+                // Verbindung öffnen, falls sie geschlossen ist
+                if (connection.State == ConnectionState.Closed)
+
+                {
+                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet.");
                     openConnection();
-                    logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                 }
 
                 // SQL-Abfrage-String zusammensetzen
-                if (string.IsNullOrEmpty(column) || string.IsNullOrEmpty(tableName))
-                {
-                    returnVal = errorValues.emptyInputParameters;
-                    logger.LogWarning("Spalten- oder Tabllenname ist leer");
-                }
-                else
-                {
-                    querySelect = $" SELECT {column} FROM {tableName}";
-                    logger.LogDebug($"column: [{column}] und tableName: [{tableName}] in Sql Statement eingesetzt");
+                querySelect = $"SELECT {column} FROM {tableName}";
+                logger.LogDebug($"column: [{column}] und tableName: [{tableName}] in SQL-Statement eingesetzt");
 
-                }
-
-                // WHERE-Bedingung hinzufügen falls vorhanden
+                // WHERE-Bedingung hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     querySelect += $" WHERE {whereCondition}";
                     logger.LogDebug($"WHERE Condition hinzugefügt [{whereCondition}]");
                 }
 
-                // ORDER BY hinzufügen falls vorhanden
+                // ORDER BY hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(orderBy))
                 {
                     querySelect += $" ORDER BY {orderBy}";
-                    logger.LogDebug($"ORDER BY hinzugefügt: [{orderBy}] ");
-
+                    logger.LogDebug($"ORDER BY hinzugefügt: [{orderBy}]");
                 }
 
-                // MySqlCommand erstellen und Abfrage ausführen nur wenn es eine Query gibt
-                if (!string.IsNullOrEmpty(querySelect))
+                // MySqlCommand erstellen und Abfrage ausführen
+                DataTable dt = new DataTable();
+                using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(querySelect, connection))
+                    logger.LogDebug($"MySqlCommand mit [{querySelect}] wird an MySqlDataReader übergeben.");
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        logger.LogDebug($"MySqlCommand mit [{querySelect}] wird an MySqlDataReader übergeben");
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            logger.LogInformation($"der Befehl wurde ausgelesen und wird in den DataTable geladen");
-                            // Lade die Spaltenstruktur des DataReaders in den DataTable
-                            dt.Load(reader);
-                        }
+                        logger.LogInformation("Der Befehl wurde ausgelesen und wird in den DataTable geladen.");
+                        dt.Load(reader);
                     }
                 }
-                // DataTable hat keinen Inhalt
+
+                // Prüfen, ob der DataTable leer ist
                 if (dt.Rows.Count == 0)
                 {
-                    returnVal = errorValues.NoData;
-                    logger.LogWarning("Es gibt keine Daten aus der Select-Anfrage");
+                    throw new InvalidOperationException("Es gibt keine Daten aus der SELECT-Anfrage.");
                 }
 
-                logger.LogInformation("Wird über Data Table ausgegeben");
+                // DataTable ausgeben (optional)
+                logger.LogInformation("Wird über Data Table ausgegeben:");
                 foreach (DataRow row in dt.Rows)
                 {
                     foreach (DataColumn col in dt.Columns)
                     {
-                        Console.Write($"{row[col]} | ");  // Gibt den Wert der aktuellen Zelle aus
+                        Console.Write($"{row[col]} | ");
                     }
-                    Console.WriteLine();  // Zeilenumbruch nach jeder Zeile
+                    Console.WriteLine();
                 }
-
+            }
+            catch (ArgumentException e)
+            {
+                returnVal = errorValues.EmptyInputParameters;
+                logger.LogWarning($"Fehlerhafte Eingabeparameter: {e.Message}");
+            }
+            catch (InvalidOperationException e)
+            {
+                returnVal = errorValues.NoData;
+                logger.LogWarning($"Keine Daten gefunden: {e.Message}");
+            }
+            catch (MySqlException e)
+            {
+                returnVal = errorValues.QueryError;
+                logger.LogError($"Datenbankfehler: {e.Message}");
             }
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten[{e}]");
+                logger.LogError($"Unbekannter Fehler: {e.Message}");
             }
-
             finally
             {
+                logger.LogDebug($"Status von SELECT vor Beenden: {returnVal}");
             }
-            logger.LogDebug($"Status von SELECT vor beenden: {returnVal}");
+
             return returnVal;
         }
 
@@ -298,34 +368,30 @@ namespace DbLib
         /// <param name="join"></param>
         /// 
         /// <returns>
-        ///  n = Anzahl betroffener Felder
-        /// -1 = tableName oder set Wert leer
-        /// -2 = anderer Fehler
+        /// - Success: Abfrage erfolgreich, mindestens ein Datensatz wurde aktualisiert.
+        /// - NoData: Abfrage erfolgreich, aber keine Datensätze wurden aktualisiert.
+        /// - EmptyInputParameters: Einer der Pflichtparameter fehlt (tableName oder set).
+        /// - InvalidQueryParameter: Fehler bei der Generierung der SQL-Abfrage.
+        /// - QueryError: Fehler bei der SQL-Abfrage (z. B. Syntaxfehler).
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
+
         public errorValues update(string tableName, string set, string whereCondition = "", string join = "")
         {
             logger.LogInformation("UPDATE Methode gestartet");
             errorValues returnVal = errorValues.Success;
             string queryUpdate = "";
+
             try
             {
-                // Sicherstellen, dass der tableName und das Set-Statement nicht leer sind (da Pflicht)
+                // Grundlegende MySQL-Abfrage erstellen
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(set))
                 {
-                    returnVal = errorValues.emptyInputParameters;
-                    logger.LogWarning("tableName oder set-Wert ist leer");
+                    throw new ArgumentException("tableName oder set-Wert ist leer");
                 }
 
-                // Grundlegende MySql-Abfrage erstellen sofern tableName und set string-Werte enthalten
-                else
-                {
-                    queryUpdate = $" UPDATE {tableName}";
-
-                    // SET-Teil der Abfrage hinzufügen
-                    queryUpdate += $" SET {set}";
-                    logger.LogDebug($"tableName: [{tableName}] und set: [{set}] in Sql Statement eingesetzt");
-
-                }
+                queryUpdate = $"UPDATE {tableName} SET {set}";
+                logger.LogDebug($"tableName: [{tableName}] und set: [{set}] in SQL Statement eingesetzt");
 
                 // JOIN hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(join))
@@ -334,48 +400,68 @@ namespace DbLib
                     logger.LogDebug($"JOIN hinzugefügt: [{join}]");
                 }
 
-
                 // WHERE-Bedingung hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(whereCondition))
                 {
                     queryUpdate += $" WHERE {whereCondition}";
-                    logger.LogDebug($"WHERE Condition´hinzugefügt: [{whereCondition}]");
+                    logger.LogDebug($"WHERE Condition hinzugefügt: [{whereCondition}]");
                 }
 
-                // Sicherstellen, dass die Verbindung geöffnet ist
+                // Verbindung öffnen, falls sie geschlossen ist
                 if (connection.State == ConnectionState.Closed)
                 {
                     logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
                 }
 
-                if (!string.IsNullOrEmpty(queryUpdate))
-                {
+                if (string.IsNullOrEmpty(queryUpdate))
+                    throw new InvalidOperationException("QueryUpdate konnte nicht generiert werden");
 
-                    // MySql-Befehl ausführen wenn die Query nicht leer ist
-                    using (MySqlCommand cmd = new MySqlCommand(queryUpdate, connection))
-                    {
-                        logger.LogDebug($"MySqlCommand [{queryUpdate}] wird ausgeführt");
-                        int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und gibt die Anzahl der betroffenen Zeilen zurück
-                        returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData; // Setzt den Enum basierend auf dem Ergebnis
-                    }
+                // MySQL-Befehl ausführen
+                using (MySqlCommand cmd = new MySqlCommand(queryUpdate, connection))
+                {
+                    logger.LogDebug($"MySQL Command [{queryUpdate}] wird ausgeführt");
+                    int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und gibt die Anzahl der betroffenen Zeilen zurück
+                    returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData; // Basierend auf den Änderungen Erfolg oder NoData
                 }
             }
-            // Es ist ein anderer Fehler aufgetreten
+            catch (ArgumentException e)
+            {
+                returnVal = errorValues.EmptyInputParameters;
+                logger.LogWarning($"Ungültige Eingabeparameter: {e.Message}");
+            }
+            catch (InvalidOperationException e)
+            {
+                returnVal = errorValues.InvalidQueryParameter;
+                logger.LogWarning($"Fehler bei der Query-Generierung: {e.Message}");
+            }
+            catch (MySqlException e)
+            {
+                returnVal = errorValues.QueryError;
+                logger.LogError($"Fehler beim Ausführen der MySQL-Abfrage: {e.Message}");
+            }
+
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten [{e}]");
+                logger.LogError($"Ein unbekannter Fehler ist aufgetreten: {e.Message}");
             }
-
             finally
             {
+                // Verbindung schließen, falls nötig (optional, wenn gewünscht)
+                if (connection.State != ConnectionState.Closed)
+                {
+                    logger.LogInformation("Schließe die Verbindung");
+                    connection.Close();
+                }
+
             }
 
-            logger.LogInformation($"Status von UPDATE vor beenden: {returnVal}");
+            logger.LogInformation($"Status von UPDATE vor Beenden: {returnVal}");
             return returnVal;
 
         }
+
 
 
         /// <summary>
@@ -387,149 +473,199 @@ namespace DbLib
         /// <param name="values"></param>
         /// 
         /// <returns>
-        ///  n = Anzahl betroffener Felder
-        /// -1 = tableName oder values leer
-        /// -2 = anderer Fehler
+        /// - Success: Abfrage erfolgreich, mindestens ein Datensatz eingefügt.
+        /// - NoData: Abfrage erfolgreich, aber keine Datensätze eingefügt.
+        /// - EmptyInputParameters: Einer der Pflichtparameter fehlt.
+        /// - DuplicateEntry: Duplikatfehler (z. B. PRIMARY KEY verletzt).
+        /// - ConstraintViolation: Constraint-Verletzung (z. B. NOT NULL verletzt).
+        /// - TableNotFound: Die angegebene Tabelle existiert nicht.
+        /// - QueryError: Fehler bei der SQL-Abfrage.
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
         public errorValues insert(string tableName, string values)
         {
             logger.LogInformation("INSERT gestartet");
-            // Speichert die Fehlermeldungen in Form von enum Werten
             errorValues returnVal = errorValues.Success;
+            string queryInsert = "";
             try
             {
-                string queryInsert = "";
-                // Sicherstellen, dass der tableName und values nicht leer sind
+                // Überprüfen, ob tableName und values gültig sind
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(values))
-                {
-                    returnVal = errorValues.emptyInputParameters;
-                    logger.LogWarning("tableName oder values-Wert leer");
+                    throw new ArgumentException("tableName oder values-Wert ist leer");
 
-                }
-                // Grundlegende MySql-Abfrage erstellen, sofern table name und values nicht leer sind
-                else
-                {
-                    queryInsert = $" INSERT INTO {tableName}";
-                    logger.LogDebug($"tableName hinzugefügt: [{tableName}]");
-                }
+                // Grundlegende MySQL-Abfrage erstellen
+                queryInsert = $"INSERT INTO {tableName} VALUES({values});";
+                logger.LogDebug($"SQL-Query erstellt: {queryInsert}");
 
-
-                // WHERE-Bedingung hinzufügen, falls vorhanden
-                if (!string.IsNullOrEmpty(values))
-                {
-                    queryInsert += $" VALUES({values});";
-                    logger.LogDebug($"VALUES hinzugefügt: [{values}]");
-                }
-
-
-                // Sicherstellen, dass die Verbindung geöffnet ist
+                // Verbindung öffnen, falls sie geschlossen ist
                 if (connection.State == ConnectionState.Closed)
                 {
                     logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
-
                 }
 
-                if (!string.IsNullOrEmpty(queryInsert))
+                // MySQL-Befehl ausführen
+                using (MySqlCommand cmd = new MySqlCommand(queryInsert, connection))
                 {
-                    // MySql-Befehl ausführen, wenn Query nicht leer ist
-                    using (MySqlCommand cmd = new MySqlCommand(queryInsert, connection))
-                    {
-                        logger.LogDebug($"MySqlCommand [{queryInsert}] wird ausgeführt");
-                        int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und speichert die Anzahl der betroffenen Zeilen
-                        returnVal = affectedRows < 0 ? errorValues.Success : errorValues.NoData; //
-                    }
+                    logger.LogDebug($"MySQL Command wird ausgeführt: {queryInsert}");
+                    int affectedRows = cmd.ExecuteNonQuery();
+                    returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData;
                 }
             }
-            // Es ist ein anderer Fehler aufgetreten
+            catch (ArgumentException e)
+            {
+                returnVal = errorValues.EmptyInputParameters;
+                logger.LogWarning($"Ungültige Eingabeparameter: {e.Message}");
+            }
+            catch (InvalidOperationException e)
+            {
+                returnVal = errorValues.InvalidQueryParameter;
+                logger.LogWarning($"Fehler bei der Query-Generierung: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1062) // Duplikatwert (PRIMARY KEY oder UNIQUE verletzt)
+            {
+                returnVal = errorValues.DuplicateEntry;
+                logger.LogError($"Duplikatfehler bei Einfügen: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1048) // NOT NULL Constraint verletzt
+            {
+                returnVal = errorValues.ConstraintViolation;
+                logger.LogError($"Datenconstraint verletzt: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1146) // Tabelle nicht gefunden
+            {
+                returnVal = errorValues.TableNotFound;
+                logger.LogError($"Tabelle nicht gefunden: {e.Message}");
+            }
+            catch (MySqlException e) // Allgemeine MySQL-Fehler
+            {
+                returnVal = errorValues.QueryError;
+                logger.LogError($"Fehler bei der MySQL-Abfrage: {e.Message}");
+            }
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten {e}");
+                logger.LogError($"Ein unbekannter Fehler ist aufgetreten: {e.Message}");
             }
-
             finally
             {
+                // Verbindung schließen, falls sie noch geöffnet ist
+                if (connection.State != ConnectionState.Closed)
+                {
+                    logger.LogInformation("Schließe die Verbindung");
+                    connection.Close();
+                }
             }
 
-            logger.LogInformation($"Status von INSERT vor beenden: {returnVal}");
+            logger.LogInformation($"Status von INSERT vor Beenden: {returnVal}");
             return returnVal;
         }
+
 
 
         /// <summary>
-        /// Die Methode bekommt die Information für eine Sql DELETE-Abfrage in Form mehrerer vordefinierter String Parameter. 
-        /// Die Aufgabe der Methode ist es, die Einzelnen Teile der Eingabe zu einem einzigen String zusammenzuführen.
+        /// Führt eine SQL DELETE-Abfrage aus, basierend auf den übergebenen Parametern.
+        /// Die Methode validiert die Eingaben, erstellt eine vollständige SQL-Abfrage und führt diese aus.
+        /// Bei Fehlern werden entsprechende Fehlercodes zurückgegeben.
         /// </summary>
         /// 
-        /// <param name="tableName"></param>
-        /// <param name="whereCondition"></param>
+        /// <param name="tableName">
+        /// <param name="whereCondition">
+        /// <param name="limit">
         /// 
         /// <returns>
-        ///  n = Anzahl betroffener Felder
-        /// -1 = tableName oder whereCondition leer
-        /// -2 = anderer Fehler
+        /// Mögliche Rückgabewerte:
+        /// - Success: Abfrage erfolgreich.
+        /// - NoData: Keine Datensätze gelöscht.
+        /// - EmptyInputParameters: Eingabewerte fehlen.
+        /// - TableNotFound: Tabelle existiert nicht.
+        /// - QueryError: Fehler bei der SQL-Abfrage.
+        /// - UnknownError: Ein unbekannter Fehler ist aufgetreten.
         /// </returns>
-        public errorValues delete(string tableName, string whereCondition, string limit)
+
+        public errorValues delete(string tableName, string whereCondition, string limit = "")
         {
             logger.LogInformation("DELETE gestartet");
             errorValues returnVal = errorValues.Success;
+            string queryDelete = "";
+
             try
             {
-                string queryDelete = "";
-                // Sicherstellen, dass der tableName und die whereCondition nicht leer sind
+                // Überprüfen, ob tableName und whereCondition gültig sind
                 if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(whereCondition))
-                {
-                    returnVal = errorValues.emptyInputParameters;
-                    logger.LogWarning($"tableName: [{tableName}] oder WHERE condition: [{whereCondition}] leer");
+                    throw new ArgumentException("tableName oder WHERE-Bedingung ist leer");
 
-                }
-                // Grundlegende MySql-Abfrage erstellen, sofern table name und values nicht leer sind
-                else
-                {
-                    queryDelete = $" DELETE FROM {tableName} WHERE {whereCondition}";
-                    logger.LogDebug($"tableName: [{tableName}] und WHERE condiotion: [{whereCondition}] eingesetzt");
-                }
+                // Grundlegende MySQL-Abfrage erstellen
+                queryDelete = $"DELETE FROM {tableName} WHERE {whereCondition}";
+                logger.LogDebug($"SQL-Query erstellt: {queryDelete}");
 
-                // WHERE-Bedingung hinzufügen, falls vorhanden
+
+                // LIMIT hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(limit))
                 {
                     queryDelete += $" LIMIT {limit};";
-                    logger.LogDebug($"LIMIT eingesetzt: [{limit}]");
+                    logger.LogDebug($"LIMIT hinzugefügt: {limit}");
                 }
 
-                // Sicherstellen, dass die Verbindung geöffnet ist
+                // Verbindung öffnen, falls sie geschlossen ist
                 if (connection.State == ConnectionState.Closed)
                 {
-
                     logger.LogInformation("Verbindung war geschlossen und wird geöffnet");
                     openConnection();
                 }
 
-                // MySql-Befehl ausführen
-                if (string.IsNullOrEmpty(queryDelete))
+                // MySQL-Befehl ausführen
+                using (MySqlCommand cmd = new MySqlCommand(queryDelete, connection))
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(queryDelete, connection))
-                    {
-
-                        logger.LogDebug($"MySqlCommand [{queryDelete}] wird ausgeführt");
-                        int affectedRows = cmd.ExecuteNonQuery(); // Führt den Befehl aus und speichert die Anzahl der betroffenen Zeilen
-                        returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData;
-                    }
+                    logger.LogDebug($"MySQL Command wird ausgeführt: {queryDelete}");
+                    int affectedRows = cmd.ExecuteNonQuery();
+                    returnVal = affectedRows > 0 ? errorValues.Success : errorValues.NoData;
                 }
             }
-            // allgemeiner Fehler
+            catch (ArgumentException e)
+            {
+                returnVal = errorValues.EmptyInputParameters;
+                logger.LogWarning($"Ungültige Eingabeparameter: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1146) // Tabelle nicht gefunden
+            {
+                returnVal = errorValues.TableNotFound;
+                logger.LogError($"Tabelle nicht gefunden: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1091) // Spalte oder Bedingung nicht gefunden
+            {
+                returnVal = errorValues.ColumnNotFound;
+                logger.LogError($"Spalte oder WHERE-Bedingung nicht gefunden: {e.Message}");
+            }
+            catch (MySqlException e) when (e.Number == 1048) // NOT NULL Constraint verletzt
+            {
+                returnVal = errorValues.ConstraintViolation;
+                logger.LogError($"Constraint-Verletzung: {e.Message}");
+            }
+            catch (MySqlException e) // Allgemeine MySQL-Fehler
+            {
+                returnVal = errorValues.QueryError;
+                logger.LogError($"Fehler bei der MySQL-Abfrage: {e.Message}");
+            }
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
-                logger.LogWarning($"Es ist ein unbekannter Fehler aufgetreten: [{e}]");
+                logger.LogError($"Ein unbekannter Fehler ist aufgetreten: {e.Message}");
             }
             finally
             {
+                // Verbindung schließen, falls sie noch geöffnet ist
+                if (connection.State != ConnectionState.Closed)
+                {
+                    logger.LogInformation("Schließe die Verbindung");
+                    connection.Close();
+                }
             }
-            logger.LogInformation($"Status von DELETE vor beenden: [{returnVal}]");
+
+            logger.LogInformation($"Status von DELETE vor Beenden: {returnVal}");
             return returnVal;
         }
+
 
         ~MySqlAccess()
         {
