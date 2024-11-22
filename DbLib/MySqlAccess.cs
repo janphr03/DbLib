@@ -19,6 +19,7 @@ namespace DbLib
         public errorValues flagStatus = errorValues.Success;  // Verbindungsstatus
 
 
+
         /// <summary>
         /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
         /// </summary>
@@ -63,6 +64,7 @@ namespace DbLib
         /// Der Konstruktor öffnet die Connection und speichert den return-Wert im flagStatus, damit man sehen kann ob die Verbindung aufgebaut wurde
         /// </summary>
         /// 
+
         /// <param name="connection"></param>
         /// <param name="logger"></param>
         /// 
@@ -75,6 +77,7 @@ namespace DbLib
 
         // @override
         public MySqlAccess(MySqlConnection connection, ILogger<MySqlAccess>? logger)
+
         {
             // Überprüfen ob die Verbindungsparameter enthalten sind
             // flagStatus errorValues.emptyParameters
@@ -87,6 +90,7 @@ namespace DbLib
             // Verbindung herstellen
             this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             // Verbindung öffnen 
             flagStatus = openConnection();
 
@@ -124,6 +128,7 @@ namespace DbLib
                     connection.Open();
                     logger?.LogInformation("Connection opened successfully.");
                     return errorValues.Success;
+
                 }
 
             }
@@ -153,6 +158,7 @@ namespace DbLib
             {
                 logger?.LogError($"MySQL error: {ex.Message}");
                 return errorValues.ConnectionQueryError;
+
             }
 
 
@@ -185,6 +191,7 @@ namespace DbLib
         {
             logger?.LogInformation("Attempting to close the connection.");
 
+
             try
             {
                 // Prüfe, ob die Verbindung existiert
@@ -203,6 +210,7 @@ namespace DbLib
                 connection.Close();
                 logger?.LogInformation("Connection closed successfully.");
                 return errorValues.Success;
+
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("null"))
             {
@@ -227,11 +235,13 @@ namespace DbLib
             finally
             {
                 logger?.LogInformation("closeConnection method completed.");
+
             }
         }
 
 
         //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
         /// <summary>
         /// erhält festgelegte Parameter beim Methodenaufruf, welche zu einem MySql Befehl zusammengeführt werden.
         /// Aus diesen Befehlen wird dann ein MySql Select Aufruf erstellt.
@@ -265,6 +275,7 @@ namespace DbLib
 
                 // Verbindung öffnen, falls sie geschlossen ist
                 if (connection.State == ConnectionState.Closed)
+
                 {
                     logger.LogInformation("Verbindung war geschlossen und wird geöffnet.");
                     openConnection();
@@ -429,6 +440,7 @@ namespace DbLib
                 returnVal = errorValues.QueryError;
                 logger.LogError($"Fehler beim Ausführen der MySQL-Abfrage: {e.Message}");
             }
+
             catch (Exception e)
             {
                 returnVal = errorValues.UnknownError;
@@ -442,10 +454,12 @@ namespace DbLib
                     logger.LogInformation("Schließe die Verbindung");
                     connection.Close();
                 }
+
             }
 
             logger.LogInformation($"Status von UPDATE vor Beenden: {returnVal}");
             return returnVal;
+
         }
 
 
@@ -584,6 +598,7 @@ namespace DbLib
                 // Grundlegende MySQL-Abfrage erstellen
                 queryDelete = $"DELETE FROM {tableName} WHERE {whereCondition}";
                 logger.LogDebug($"SQL-Query erstellt: {queryDelete}");
+
 
                 // LIMIT hinzufügen, falls vorhanden
                 if (!string.IsNullOrEmpty(limit))
