@@ -367,7 +367,7 @@ namespace DbLib.TestUnits
             // Simuliere eine gültige Verbindung
             var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
 
-            string longColumnName = new string('x', ); // Simuliere einen sehr langen Spaltennamen
+            string longColumnName = new string('x', 9999); // Simuliere einen sehr langen Spaltennamen
             string tableName = "tester";
 
             // Act
