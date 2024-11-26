@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <Version>1.0.2</Version> <!-- Neue Version -->
+    <PackageId>DbLibConnectorjh</PackageId> <!-- Paketname hinzugefügt -->
   </PropertyGroup>
 
   <ItemGroup>

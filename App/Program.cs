@@ -20,13 +20,13 @@ class Program
             return;
         }
 
-        // Konfiguriere Serilog, um in eine Datei zu loggen
+        // Konfiguriert Serilog, um in eine Datei zu loggen
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.File(@"C:\logs\logfile.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        // Erstelle eine LoggerFactory und füge Serilog als Logger hinzu
+        // Erstellt eine LoggerFactory und fügt Serilog als Logger hinzu
         using var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSerilog(); // Serilog als Logging-Provider hinzufügen
@@ -43,11 +43,12 @@ class Program
         try
         {
             // MySqlAccess-Instanz mit der Verbindung erstellen
-            IConnector mySqlAccess = new MySqlAccess("localhost", "testprotocol", "root", "password", logger);
+            IConnector mySqlAccess = new MySqlAccess("localhost", "testprotocol", "root", password, logger);
 
-            // Beispielaufruf für eine Methode
+
             var status = mySqlAccess.select("*", "tester", "", "");
 
+            // Status testen
             if (status == errorValues.Success)
             {
                 Console.WriteLine("Daten erfolgreich abgerufen.");

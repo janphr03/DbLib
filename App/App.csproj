@@ -20,4 +20,10 @@
     <ProjectReference Include="..\DbLib\DbLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="DbLib">
+      <HintPath>..\DbLib\bin\Debug\net8.0\DbLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

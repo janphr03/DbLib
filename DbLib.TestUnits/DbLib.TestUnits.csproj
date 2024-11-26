@@ -14,7 +14,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+<<<<<<< HEAD
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+=======
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+>>>>>>> 3fbddef8ffacd5cdb38d048a93d36bfb5d91273e
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
