@@ -1,6 +1,5 @@
 ﻿using DbLib;
 using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
 using Serilog;
 
 class Program
