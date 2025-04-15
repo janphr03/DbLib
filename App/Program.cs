@@ -7,17 +7,11 @@ class Program
 {
     static void Main(string[] args)
     {
-<<<<<<< HEAD
         string server = Environment.GetEnvironmentVariable("MYSQL_SERVER") ?? "localhost";
         string database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "testprotocol";
         string user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
         string ?password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
-=======
-        string server = "localhost";
-        string database = "testprotocol";
-        string user = "root";
-        string password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD"); // Passwort ist als Umgebungsvariable hinterlegt
->>>>>>> 9604f82d300e54334aee2c2065e7fe5f2ebec49e
+
 
         // Überprüfen, ob die Variablen korrekt geladen wurden
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(database) ||
