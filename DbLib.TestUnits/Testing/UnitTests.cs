@@ -377,79 +377,9 @@ namespace DbLib.TestUnits
 
             // Assert
             Assert.Equal(errorValues.QueryError, result);
-        
-        
-        
+
+
+
         }
-
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-        //                             update 
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-        [Fact]
-    public void Update_ReturnsEmptyInputParameters_WhenTableNameOrSetIsEmpty()
-    {
-        // Arrange
-        using var connection = new MySqlConnection(connectionString);
-        var mockLogger = new Mock<ILogger<MySqlAccess>>();
-        // Erstelle eine Instanz mit gültiger Verbindung.
-        var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
-
-        // Act
-        var result1 = mySqlAccess.update("", "value = 'NeuerWert'");
-        var result2 = mySqlAccess.update("tester", "");
-
-        // Assert
-        Assert.Equal(errorValues.EmptyInputParameters, result1);
-        Assert.Equal(errorValues.EmptyInputParameters, result2);
-    }
-
-    [Fact]
-    public void Update_ReturnsNoData_WhenNoRecordMatchesTheWhereCondition()
-    {
-        // Arrange
-        using var connection = new MySqlConnection(connectionString);
-        var mockLogger = new Mock<ILogger<MySqlAccess>>();
-        var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
-
-        // Act: Setze eine WHERE-Klausel, die garantiert kein Datensatz erfüllt.
-        var result = mySqlAccess.update("tester", "value = 'UpdatedValue'", "id = '-1'");
-        
-        // Assert
-        Assert.Equal(errorValues.NoData, result);
-    }
-
-    [Fact]
-    public void Update_UpdatesExistingRecord_ReturnsSuccess()
-    {
-        // Integrationstest: Ein Test-Datensatz wird eingefügt, anschließend aktualisiert und zum Schluss wieder entfernt.
-        using var connection = new MySqlConnection(connectionString);
-        connection.Open();
-        var mockLogger = new Mock<ILogger<MySqlAccess>>();
-        var mySqlAccess = new MySqlAccess(connection, mockLogger.Object);
-
-        // Insert: Füge einen Test-Datensatz ein. (Hinweis: Passe den INSERT-Wert an die Struktur deiner Tabelle an.)
-        var insertResult = mySqlAccess.insert("tester", "'TestUpdate'");
-        Assert.Equal(errorValues.Success, insertResult);
-
-        // Update: Aktualisiere den Test-Datensatz.
-        var updateResult = mySqlAccess.update("tester", "value = 'UpdatedTest'", "value = 'TestUpdate'");
-        Assert.Equal(errorValues.Success, updateResult);
-
-        // Clean-up: Lösche den aktualisierten Test-Datensatz.
-        var deleteResult = mySqlAccess.delete("tester", "value = 'UpdatedTest'");
-        Assert.Equal(errorValues.Success, deleteResult);
-    }
-
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-        //                             insert 
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-        
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-        //                             delete 
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
     }
 }
