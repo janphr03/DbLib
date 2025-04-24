@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DbLib\DbLib.csproj" />
+    <ProjectReference Include="..\HelperClasses\HelperClasses.csproj" />
   </ItemGroup>
+
 
 </Project>
