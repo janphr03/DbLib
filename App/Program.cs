@@ -70,6 +70,7 @@ class Program
         Log.CloseAndFlush();
     }
 
+    //=====================================================================================================================================
     /// <summary>
         /// Startet einen MySQL-Dockercontainer.
         /// Voraussetzung: Docker muss installiert sein und im PATH verfügbar.
